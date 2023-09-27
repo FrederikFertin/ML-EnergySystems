@@ -45,6 +45,7 @@ wind_cubed = np.array((data['wind_speed [m/s]']**3).values)
 windXpressure = np.array((data['wind_speed [m/s]']**3).values*data['pressure [hPa]'].values)
 data['wind_cubed'] = wind_cubed
 data['wind_energy'] = windXpressure
+data['ones'] = 1
 
 #%% Standardization 
 attributeNames = np.asarray(data.columns)
@@ -66,16 +67,25 @@ X = np.matrix([x1,dfs[cols[0]],dfs[cols[1]],dfs[cols[5]]]).T
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle=False)
 
 #%% First sample data
-size = 300
-X_slice = X[0:size]
-y_slice = y[0:size]
+sizes = [100,1000,len(X)]
+feat = [['ones','wind_speed [m/s]'],['ones','wind_speed [m/s]','temperature [C]']]
+mse_list = []
+for size in sizes:
+    for features in feat:
+        X = np.matrix(data[features])
+        #X = np.matrix([x1,data[cols[0]],data[cols[1]],data[cols[2]]]).T
+        X_slice = X[0:size]
+        y_slice = y[0:size]
 
-X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
+        X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
 
-# Closed form linear regression:
-beta = np.array(inv(X_train.T @ X_train) @ X_train.T @ y_train).reshape(-1)
-y_pred = np.array(X_test @ beta).reshape(-1)
-mse = mean_squared_error(y_test, y_pred) # 0.028742528161411984
+        # Closed form linear regression:
+        beta = np.array(inv(X_train.T @ X_train) @ X_train.T @ y_train).reshape(-1)
+        y_pred = np.array(X_test @ beta).reshape(-1)
+        mse = mean_squared_error(y_test, y_pred) # 0.028742528161411984
+        mse_list.append(mse)
+    mse_list.append('Break')
+print(mse_list)
 
 
 
