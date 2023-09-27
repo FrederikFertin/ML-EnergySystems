@@ -7,9 +7,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from numpy.linalg import inv
+from model1 import closed_form_fit,closed_form_predict
 
-
-#%% Feature data and actual wind power production: 
+#%% Feature data and actual wind power production:
 cwd = os.getcwd()
 
 """ Load actual wind power from cwd """
@@ -47,7 +47,7 @@ data['wind_cubed'] = wind_cubed
 data['wind_energy'] = windXpressure
 data['ones'] = 1
 
-#%% Standardization 
+#%% Standardization
 attributeNames = np.asarray(data.columns)
 dfs = data.copy()
 mu_dfs = np.mean(dfs[attributeNames])
@@ -68,13 +68,13 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle
 
 #%% First sample data
 sizes = [100,1000,len(X)]
-feat = [['ones','wind_speed [m/s]'],['ones','wind_speed [m/s]','temperature [C]'],['ones','wind_cubed']]
+feat = [['ones','wind_speed [m/s]'],['ones','wind_speed [m/s]','temperature [C]'],['ones','wind_cubed'],['ones','temperature [C]']]
 mse_list = []
 
 for features in feat:
     mse_list.append(features)
     for size in sizes:
-        X = np.matrix(data[features])
+        X = np.array(data[features])
         #X = np.matrix([x1,data[cols[0]],data[cols[1]],data[cols[2]]]).T
         X_slice = X[0:size]
         y_slice = y[0:size]
@@ -82,8 +82,8 @@ for features in feat:
         X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
 
         # Closed form linear regression:
-        beta = np.array(inv(X_train.T @ X_train) @ X_train.T @ y_train).reshape(-1)
-        y_pred = np.array(X_test @ beta).reshape(-1)
+        beta = closed_form_fit(X_train, y_train)
+        y_pred = closed_form_predict(beta, X_test)
         mse = mean_squared_error(y_test, y_pred) # 0.028742528161411984
         mse_list.append(mse)
 print(mse_list)
