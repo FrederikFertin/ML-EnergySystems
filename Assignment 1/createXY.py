@@ -8,6 +8,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
 from numpy.linalg import inv
 
+
+#%% Feature data and actual wind power production: 
 cwd = os.getcwd()
 
 """ Load data files from folder """
@@ -31,12 +33,23 @@ with open(temp_dir) as data_file:
     line = pd.DataFrame({"Actual": df1Jan}, index=[datetime.strptime('2022-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')])
     df = df.append(line, ignore_index=False)
     df = df.sort_index()
-    df = df.iloc[0:len(df['Actual'])-1,:]
+    df = df.iloc[0:len(df['Actual'])-1,:] 
 
+#%% Standardization 
+attributeNames = np.asarray(data.columns)
+dfs = data.copy()
+mu_dfs = np.mean(dfs[attributeNames])
+std_dfs = np.std(dfs[attributeNames])
+
+for i in range(0,len(attributeNames)):
+    dfs[attributeNames[i]] = (dfs[attributeNames[i]]-mu_dfs[i])/std_dfs[i]
+
+
+#%% Formatting
 y = np.array(df['Actual'].values)
 x1 = np.ones(len(y))
-cols = data.columns
-X = np.matrix([x1,data[cols[0]],data[cols[1]],data[cols[2]]]).T
+cols = dfs.columns
+X = np.matrix([x1,dfs[cols[0]],dfs[cols[1]],dfs[cols[2]]]).T
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle=False)
 
