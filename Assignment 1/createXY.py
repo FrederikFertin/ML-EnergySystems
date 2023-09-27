@@ -18,7 +18,8 @@ df = pd.read_csv(temp_dir,sep=";")
 
 ### Create time index to match feature data
 df["HourUTC"] = df['Date'].astype(str) +" "+ df["Time"]
-df['HourUTC'] = pd.to_datetime(df['HourUTC'])
+df['HourUTC'] = df['HourUTC'].apply(lambda x: str(x.replace('.','-')))
+df['HourUTC'] = pd.to_datetime(df['HourUTC'], format='%d-%m-%Y %H:%M')
 df = df[['HourUTC','Actual']]
 df['HourUTC'] = df['HourUTC'].dt.tz_localize(None)
 df = df.drop_duplicates('HourUTC',keep='first')
@@ -38,9 +39,10 @@ temp_dir = os.path.join(cwd, 'ClimateData/data.csv')
 data = pd.read_csv(temp_dir)
 data.set_index('HourUTC', inplace=True)
 
-#%% Feature creation
+#%% Step 2: Creating the training and test datasets
 power_prod_prev_36 = np.array(np.append(df['Actual'].values[0:36],df['Actual'].values[0:len(df.Actual)-36]),dtype=object)
 
+<<<<<<< Updated upstream
 wind_cubed = np.array((data['wind_speed [m/s]']**3).values)
 windXpressure = np.array((data['wind_speed [m/s]']**3).values*data['pressure [hPa]'].values)
 data['wind_cubed'] = wind_cubed
@@ -48,6 +50,9 @@ data['wind_energy'] = windXpressure
 data['ones'] = 1
 
 #%% Standardization
+=======
+# Standardization 
+>>>>>>> Stashed changes
 attributeNames = np.asarray(data.columns)
 dfs = data.copy()
 mu_dfs = np.mean(dfs[attributeNames])
@@ -57,7 +62,7 @@ for i in range(0,len(attributeNames)):
     dfs[attributeNames[i]] = (dfs[attributeNames[i]]-mu_dfs[i])/std_dfs[i]
 
 
-#%% Formatting
+# Formatting
 y = np.array(df['Actual'].values)
 x1 = np.ones(len(y))
 cols = dfs.columns
@@ -66,6 +71,7 @@ X = np.matrix([x1,dfs[cols[0]],dfs[cols[1]],dfs[cols[5]]]).T
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle=False)
 
+<<<<<<< Updated upstream
 #%% First sample data
 sizes = [100,1000,len(X)]
 feat = [['ones','wind_speed [m/s]'],['ones','wind_speed [m/s]','temperature [C]'],['ones','wind_cubed'],['ones','temperature [C]']]
@@ -78,6 +84,25 @@ for features in feat:
         #X = np.matrix([x1,data[cols[0]],data[cols[1]],data[cols[2]]]).T
         X_slice = X[0:size]
         y_slice = y[0:size]
+=======
+#%% Step 3: First sample data
+size = 300
+X_slice = X[0:size]
+y_slice = y[0:size]
+
+X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
+
+# Closed form linear regression:
+beta = np.array(inv(X_train.T @ X_train) @ X_train.T @ y_train).reshape(-1)
+y_pred = np.array(X_test @ beta).reshape(-1)
+mse = mean_squared_error(y_test, y_pred) # 0.028742528161411984
+
+#%% Step 4: Non-linear regression
+wind_cubed = np.array((data['wind_speed [m/s]']**3).values)
+windXpressure = np.array((data['wind_speed [m/s]']**3).values*data['pressure [hPa]'].values)
+dfs['wind_cubed'] = wind_cubed
+dfs['wind_energy'] = windXpressure
+>>>>>>> Stashed changes
 
         X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
 
