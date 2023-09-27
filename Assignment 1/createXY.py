@@ -68,10 +68,12 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle
 
 #%% First sample data
 sizes = [100,1000,len(X)]
-feat = [['ones','wind_speed [m/s]'],['ones','wind_speed [m/s]','temperature [C]']]
+feat = [['ones','wind_speed [m/s]'],['ones','wind_speed [m/s]','temperature [C]'],['ones','wind_cubed']]
 mse_list = []
-for size in sizes:
-    for features in feat:
+
+for features in feat:
+    mse_list.append(features)
+    for size in sizes:
         X = np.matrix(data[features])
         #X = np.matrix([x1,data[cols[0]],data[cols[1]],data[cols[2]]]).T
         X_slice = X[0:size]
@@ -84,10 +86,6 @@ for size in sizes:
         y_pred = np.array(X_test @ beta).reshape(-1)
         mse = mean_squared_error(y_test, y_pred) # 0.028742528161411984
         mse_list.append(mse)
-    mse_list.append('Break')
 print(mse_list)
-
-
-
 
 
