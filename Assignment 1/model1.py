@@ -49,8 +49,9 @@ def closed_form_solve(X, y):
 def closed_form_predict(beta,X):
     return X @ beta
 
-def closed_form_weighted_solve():
-    
+def closed_form_weighted_solve(X, y, W):
+    XT = np.transpose(X)
+    return np.linalg.inv(XT @ W @ X) @ XT @ W @ y
     
 #%% Dummy data sets 
 X_train = np.array([[1,1],[1,2],[1,3]])
