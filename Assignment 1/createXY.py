@@ -29,7 +29,7 @@ with open(temp_dir) as data_file:
     df['HourUTC'] = df['HourUTC'].dt.tz_localize(None)
     df = df.drop_duplicates('HourUTC',keep='first')
     df.set_index('HourUTC', inplace=True)
-    df1Jan = np.mean([df['2022-01-01 01:00']['Actual'].values[0],df['2021-12-31 23:00']['Actual'].values[0]])
+    df1Jan = np.mean([df.loc['2022-01-01 01:00']['Actual'],df.loc['2021-12-31 23:00']['Actual']])
     line = pd.DataFrame({"Actual": df1Jan}, index=[datetime.strptime('2022-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')])
     df = df.append(line, ignore_index=False)
     df = df.sort_index()
