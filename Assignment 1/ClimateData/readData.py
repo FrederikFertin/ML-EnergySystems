@@ -33,9 +33,13 @@ with open(temp_dir) as data_file:
 temp_dir = os.path.join(cwd, 'mean_pressure.json')
 with open(temp_dir) as data_file:
     press = json.load(data_file)
+
+temp_dir = os.path.join(cwd, 'mean_wind_dir.json')
+with open(temp_dir) as data_file:
+    direct = json.load(data_file)
     
 """ Create dataframe with datetime observations """
-time, time_check, wind_speed, temperature, pressure = [], [], [], [], []
+time, time_check, wind_speed, temperature, pressure, wind_dir = [], [], [], [], [], []
 
 for results in wind['features']:
     time.insert(0,results['properties']['from'])
@@ -59,8 +63,18 @@ if (not time == time_check):
     print("Time stamps for the data files do not match -")
     print("Request new data if not intended.")
 
-df = pd.DataFrame([time,wind_speed,temperature,pressure]).T
-df.columns = 'HourUTC','wind_speed [m/s]','temperature [C]','pressure [hPa]'
+time_check = []
+
+for results in direct['features']:
+    time_check.insert(0,results['properties']['from'])
+    wind_dir.insert(0,results['properties']['value'])
+
+if (not time == time_check):
+    print("Time stamps for the data files do not match -")
+    print("Request new data if not intended.")
+
+df = pd.DataFrame([time,wind_speed,temperature,pressure,wind_dir]).T
+df.columns = 'HourUTC','wind_speed [m/s]','temperature [C]','pressure [hPa]','wind_direction [degress]'
 df['HourUTC'] = pd.to_datetime(df['HourUTC'])
 df['HourUTC'] = df['HourUTC'].dt.tz_localize(None)
 df.set_index('HourUTC', inplace=True)

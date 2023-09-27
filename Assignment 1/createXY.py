@@ -12,28 +12,39 @@ from numpy.linalg import inv
 #%% Feature data and actual wind power production: 
 cwd = os.getcwd()
 
-""" Load data files from folder """
-temp_dir = os.path.join(cwd, 'ClimateData/data.csv')
-with open(temp_dir) as data_file:
-    data = pd.read_csv(data_file)
-    data.set_index('HourUTC', inplace=True)
-
 """ Load actual wind power from cwd """
 temp_dir = os.path.join(cwd, 'Actual wind power.csv')
-with open(temp_dir) as data_file:
-    df = pd.read_csv(data_file,sep=";")
-    plt.plot(df['Actual'])
-    df["HourUTC"] = df['Date'].astype(str) +" "+ df["Time"]
-    df['HourUTC'] = pd.to_datetime(df['HourUTC'])
-    df = df[['HourUTC','Actual']]
-    df['HourUTC'] = df['HourUTC'].dt.tz_localize(None)
-    df = df.drop_duplicates('HourUTC',keep='first')
-    df.set_index('HourUTC', inplace=True)
-    df1Jan = np.mean([df.loc['2022-01-01 01:00']['Actual'],df.loc['2021-12-31 23:00']['Actual']])
-    line = pd.DataFrame({"Actual": df1Jan}, index=[datetime.strptime('2022-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')])
-    df = df.append(line, ignore_index=False)
-    df = df.sort_index()
-    df = df.iloc[0:len(df['Actual'])-1,:] 
+df = pd.read_csv(temp_dir,sep=";")
+
+### Create time index to match feature data
+df["HourUTC"] = df['Date'].astype(str) +" "+ df["Time"]
+df['HourUTC'] = pd.to_datetime(df['HourUTC'])
+df = df[['HourUTC','Actual']]
+df['HourUTC'] = df['HourUTC'].dt.tz_localize(None)
+df = df.drop_duplicates('HourUTC',keep='first')
+df.set_index('HourUTC', inplace=True)
+
+### Sort out DST issues with duplicate values and missing observation (2022-01-01 00:00)
+df1Jan = np.mean([df.loc['2022-01-01 01:00']['Actual'],df.loc['2021-12-31 23:00']['Actual']])
+line = pd.DataFrame({"Actual": df1Jan}, index=[datetime.strptime('2022-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')])
+df = df.append(line, ignore_index=False)
+df = df.sort_index()
+df = df.iloc[0:len(df['Actual'])-1,:]
+""" Power production is already normalized """
+
+
+""" Load data files from folder """
+temp_dir = os.path.join(cwd, 'ClimateData/data.csv')
+data = pd.read_csv(temp_dir)
+data.set_index('HourUTC', inplace=True)
+
+#%% Feature creation
+power_prod_prev_36 = np.array(np.append(df['Actual'].values[0:36],df['Actual'].values[0:len(df.Actual)-36]),dtype=object)
+
+wind_cubed = np.array((data['wind_speed [m/s]']**3).values)
+windXpressure = np.array((data['wind_speed [m/s]']**3).values*data['pressure [hPa]'].values)
+data['wind_cubed'] = wind_cubed
+data['wind_energy'] = windXpressure
 
 #%% Standardization 
 attributeNames = np.asarray(data.columns)
@@ -49,7 +60,8 @@ for i in range(0,len(attributeNames)):
 y = np.array(df['Actual'].values)
 x1 = np.ones(len(y))
 cols = dfs.columns
-X = np.matrix([x1,dfs[cols[0]],dfs[cols[1]],dfs[cols[2]]]).T
+X = np.matrix([x1,dfs[cols[0]],dfs[cols[1]],dfs[cols[5]]]).T
+#X = np.matrix([x1,dfs[cols[0]],dfs[cols[1]],dfs[cols[2]],dfs[cols[3]],dfs[cols[4]]]).T
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle=False)
 
