@@ -1,6 +1,8 @@
 import numpy as np
 from sklearn.metrics import mean_squared_error
-
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
 
 def stochastic_gradient_descent(X, y, N, lambda_):   
     theta_old = np.zeros((1,len(X[0,:])))
@@ -42,14 +44,14 @@ def gradient_descent(X, y, M, alpha):
         theta_old = theta_new
     return theta_old
 
-def closed_form_solve(X, y):
+def closed_form_fit(X, y):
     XT = np.transpose(X)
     return np.linalg.inv(XT @ X) @ XT @ y
 
 def closed_form_predict(beta,X):
     return X @ beta
 
-def closed_form_weighted_solve(X, y, W):
+def closed_form_weighted_fit(X, y, W):
     XT = np.transpose(X)
     return np.linalg.inv(XT @ W @ X) @ XT @ W @ y
     
@@ -58,10 +60,6 @@ X_train = np.array([[1,1],[1,2],[1,3]])
 X_test = np.array([[1,0.5]])
 y_train = [3,5,7]
 y_test = [2]
-
-M = 100000
-alpha = 1/100000
-# lambda_ = 1/101
 
 
 #%% Step 3.1
@@ -75,6 +73,8 @@ print('Training mse: ', mse_train_SGD)
 print("Test mse: ", mse_test_SGD)
 """
 # Solution using gradient descent 
+M = 100000
+alpha = 1/100000
 beta_GD = gradient_descent(X_train, y_train, M, alpha)
 y_pred_train_GD = closed_form_predict(beta_GD, X_train)
 mse_train_GD = mean_squared_error(y_train,y_pred_train_GD)
@@ -86,7 +86,7 @@ print('Training mse: ', mse_train_GD)
 print("Test mse: ", mse_test_GD)
 
 # Solution using closed form (i.e., matrix formula)
-beta_CF = closed_form_solve(X_train,y_train)
+beta_CF = closed_form_fit(X_train,y_train)
 y_pred_train_CF = closed_form_predict(beta_CF, X_train)
 mse_train_CF = mean_squared_error(y_train,y_pred_train_CF)
 y_pred_test_CF = closed_form_predict(beta_CF, X_test)
@@ -95,6 +95,46 @@ print("Closed form:")
 print("Model coefficients: ", beta_CF)
 print('Training mse: ', mse_train_CF)
 print("Test mse: ", mse_test_CF)
+
+#%% Step 3.2-3
+beta_CF = closed_form_fit(X_train,y_train)
+y_pred_train_CF = closed_form_predict(beta_CF, X_train)
+mse_train_CF = mean_squared_error(y_train,y_pred_train_CF)
+y_pred_test_CF = closed_form_predict(beta_CF, X_test)
+mse_test_CF = mean_squared_error(y_test,y_pred_test_CF)
+print("Closed form:")
+print("Model coefficients: ", beta_CF)
+print('Training mse: ', mse_train_CF)
+print("Test mse: ", mse_test_CF)
+
+#%% Step 4.1
+poly = PolynomialFeatures(degree=2, include_bias=False)
+
+poly_features_train = poly.fit_transform(X_train.reshape(-1, 1))
+
+poly_features_test = poly.fit_transform(X_test.reshape(-1, 1))
+
+poly_reg_model = LinearRegression()
+
+poly_reg_model.fit(poly_features_train, y_train)
+
+y_pred = poly_reg_model.predict(poly_features_test)
+
+mse = mean_squared_error(y_test, y_pred)
+
+#%% Step 4.2
+# Gaussian kernel 
+def gaussian_kernel(x,x_u,sigma=0.05):
+    return  np.exp(-(x-x_u)**2 / (2*sigma**2) )
+
+for i in range(N):
+    
+
+#%% Step 5.1
+def cf_reg_fit(X,y,lambda_):
+    XT = np.transpose(X)
+    return np.linalg.inv(XT @ X + lambda_) @ XT @ y
+
 
 
 
