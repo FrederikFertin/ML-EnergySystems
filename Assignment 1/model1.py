@@ -31,8 +31,6 @@ def stochastic_gradient_descent(X, y, N, lambda_):
     return theta_old, mse_train, mse_test
 
 def gradient_descent(X, y, M, alpha):
-    # theta_old = np.zeros((1,len(X[0,:])))
-    # theta_new = np.zeros(len(X[0,:]))
     theta_old = np.zeros(len(X[0,:]))
     theta_new = theta_old.copy()
     
@@ -50,10 +48,6 @@ def closed_form_fit(X, y):
 
 def closed_form_predict(beta,X):
     return X @ beta
-
-def closed_form_weighted_fit(X, y, W):
-    XT = np.transpose(X)
-    return np.linalg.inv(XT @ W @ X) @ XT @ W @ y
     
 #%% Dummy data sets 
 X_train = np.array([[1,1],[1,2],[1,3]])
@@ -124,11 +118,28 @@ mse = mean_squared_error(y_test, y_pred)
 
 #%% Step 4.2
 # Gaussian kernel 
-def gaussian_kernel(x,x_u,sigma=0.05):
-    return  np.exp(-(x-x_u)**2 / (2*sigma**2) )
+def gaussian_kernel(x_t,x_u,sigma=0.05):
+    return  np.exp(-np.linalg.norm(x_t-x_u) / (2*sigma**2) )
 
-for i in range(N):
-    
+def closed_form_weighted_fit(X, y, W):
+    XT = np.transpose(X)
+    return np.linalg.inv(XT @ W @ X) @ XT @ W @ y
+
+N = np.shape(X_train)[0]
+
+quantiles = np.linspace(0,1,11) 
+ix = np.argsort(X_train[:,1])
+X_sorted = X_train[ix]
+q_ix = ((len(X_sorted[0])-1)*quantiles).astype(int)
+X_u = X_sorted[[q_ix]]
+y_u = np.zeros(len(X_u[0]))
+for i in range(len(X_u[0])):
+    W = np.zeros((N,N))
+    for j in range(len(X_train[0])):
+        W[j,j] = gaussian_kernel(X_train[j],X_u[i])
+    beta = closed_form_weighted_fit(X_train, y_train, W)
+    y_u[i] = closed_form_predict(beta, X_u[i])
+
 
 #%% Step 5.1
 def cf_reg_fit(X,y,lambda_):
