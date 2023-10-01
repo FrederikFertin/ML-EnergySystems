@@ -3,6 +3,8 @@ from sklearn.metrics import mean_squared_error
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
+from sklearn.model_selection import train_test_split
+from createXY import prepData
 
 def stochastic_gradient_descent(X, y, N, lambda_):   
     theta_old = np.zeros((1,len(X[0,:])))
@@ -48,13 +50,18 @@ def closed_form_fit(X, y):
 
 def closed_form_predict(beta,X):
     return X @ beta
-    
+
+
+#%% Data set
+data = prepData()
+
+'''
 #%% Dummy data sets 
 X_train = np.array([[1,1],[1,2],[1,3]])
 X_test = np.array([[1,0.5]])
 y_train = [3,5,7]
 y_test = [2]
-
+'''
 
 #%% Step 3.1
 """ Stochastic Gradient Descent 
@@ -66,9 +73,17 @@ print("Model coefficients: ", beta_SGD[-1,:])
 print('Training mse: ', mse_train_SGD)
 print("Test mse: ", mse_test_SGD)
 """
+# Choosing only 100 samples and windspeed
+X = np.array(data[['ones','wind_speed [m/s]']])
+y = np.array(data['production'])
+X_slice = X[0:100]
+y_slice = y[0:100]
+X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
+
+
 # Solution using gradient descent 
-M = 100000
-alpha = 1/100000
+M = 1000
+alpha = 1/1000
 beta_GD = gradient_descent(X_train, y_train, M, alpha)
 y_pred_train_GD = closed_form_predict(beta_GD, X_train)
 mse_train_GD = mean_squared_error(y_train,y_pred_train_GD)
@@ -91,6 +106,8 @@ print('Training mse: ', mse_train_CF)
 print("Test mse: ", mse_test_CF)
 
 #%% Step 3.2-3
+
+'''
 beta_CF = closed_form_fit(X_train,y_train)
 y_pred_train_CF = closed_form_predict(beta_CF, X_train)
 mse_train_CF = mean_squared_error(y_train,y_pred_train_CF)
@@ -100,6 +117,33 @@ print("Closed form:")
 print("Model coefficients: ", beta_CF)
 print('Training mse: ', mse_train_CF)
 print("Test mse: ", mse_test_CF)
+'''
+# %% Step 3: First sample data
+sizes = [100, 1000, len(data)]
+feat = [['ones', 'wind_speed [m/s]'], ['ones', 'wind_speed [m/s]', 'temperature [C]'], ['ones', 'wind_cubed'],
+        ['ones', 'temperature [C]']]
+mse_list = []
+
+# Looping through features and sample sizes. Output will be a list with the shape:
+    # Features[0], size[0], ..., size[-1], features[1] and so on
+y = np.array(data['production'])
+for features in feat:
+    mse_list.append(features)
+    for size in sizes:
+        X = np.array(data[features])
+        # X = np.matrix([x1,data[cols[0]],data[cols[1]],data[cols[2]]]).T
+        X_slice = X[0:size]
+        y_slice = y[0:size]
+
+        X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
+
+        # Closed form linear regression:
+        beta = closed_form_fit(X_train, y_train)
+        y_pred = closed_form_predict(beta, X_test)
+        mse = mean_squared_error(y_test, y_pred)  # 0.028742528161411984
+        mse_list.append(mse)
+print(mse_list)
+
 
 #%% Step 4.1
 poly = PolynomialFeatures(degree=2, include_bias=False)
