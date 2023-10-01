@@ -41,8 +41,6 @@ data.set_index('HourUTC', inplace=True)
 
 #%% Step 2: Creating the training and test datasets
 power_prod_prev_36 = np.array(np.append(df['Actual'].values[0:36],df['Actual'].values[0:len(df.Actual)-36]),dtype=object)
-
-<<<<<<< Updated upstream
 wind_cubed = np.array((data['wind_speed [m/s]']**3).values)
 windXpressure = np.array((data['wind_speed [m/s]']**3).values*data['pressure [hPa]'].values)
 data['wind_cubed'] = wind_cubed
@@ -50,9 +48,6 @@ data['wind_energy'] = windXpressure
 data['ones'] = 1
 
 #%% Standardization
-=======
-# Standardization 
->>>>>>> Stashed changes
 attributeNames = np.asarray(data.columns)
 dfs = data.copy()
 mu_dfs = np.mean(dfs[attributeNames])
@@ -71,8 +66,7 @@ X = np.matrix([x1,dfs[cols[0]],dfs[cols[1]],dfs[cols[5]]]).T
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle=False)
 
-<<<<<<< Updated upstream
-#%% First sample data
+#%% Step 3: First sample data
 sizes = [100,1000,len(X)]
 feat = [['ones','wind_speed [m/s]'],['ones','wind_speed [m/s]','temperature [C]'],['ones','wind_cubed'],['ones','temperature [C]']]
 mse_list = []
@@ -84,33 +78,20 @@ for features in feat:
         #X = np.matrix([x1,data[cols[0]],data[cols[1]],data[cols[2]]]).T
         X_slice = X[0:size]
         y_slice = y[0:size]
-=======
-#%% Step 3: First sample data
-size = 300
-X_slice = X[0:size]
-y_slice = y[0:size]
-
-X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
-
-# Closed form linear regression:
-beta = np.array(inv(X_train.T @ X_train) @ X_train.T @ y_train).reshape(-1)
-y_pred = np.array(X_test @ beta).reshape(-1)
-mse = mean_squared_error(y_test, y_pred) # 0.028742528161411984
-
-#%% Step 4: Non-linear regression
-wind_cubed = np.array((data['wind_speed [m/s]']**3).values)
-windXpressure = np.array((data['wind_speed [m/s]']**3).values*data['pressure [hPa]'].values)
-dfs['wind_cubed'] = wind_cubed
-dfs['wind_energy'] = windXpressure
->>>>>>> Stashed changes
 
         X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
 
         # Closed form linear regression:
         beta = closed_form_fit(X_train, y_train)
         y_pred = closed_form_predict(beta, X_test)
-        mse = mean_squared_error(y_test, y_pred) # 0.028742528161411984
+        mse = mean_squared_error(y_test, y_pred)  # 0.028742528161411984
         mse_list.append(mse)
 print(mse_list)
+
+#%% Step 4: Non-linear regression
+wind_cubed = np.array((data['wind_speed [m/s]']**3).values)
+windXpressure = np.array((data['wind_speed [m/s]']**3).values*data['pressure [hPa]'].values)
+dfs['wind_cubed'] = wind_cubed
+dfs['wind_energy'] = windXpressure
 
 
