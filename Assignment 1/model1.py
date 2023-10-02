@@ -118,10 +118,18 @@ print("Model coefficients: ", beta_CF)
 print('Training mse: ', mse_train_CF)
 print("Test mse: ", mse_test_CF)
 '''
-# %% Step 3: First sample data
-sizes = [100, 1000, len(data)]
-feat = [['ones', 'wind_speed [m/s]'], ['ones', 'wind_speed [m/s]', 'temperature [C]'], ['ones', 'wind_cubed'],
-        ['ones', 'temperature [C]']]
+plotting = False
+if plotting:    
+    feat = [['ones', 'wind_speed [m/s]']]
+    sizes = [len(data)]
+else:
+    sizes = [100, 1000, len(data)]
+    feat = [['ones', 'wind_speed [m/s]'], ['ones', 'wind_cubed'],
+            ['ones', 'wind_speed [m/s]','temperature [C]'],
+            ['ones','wind_speed [m/s]', 'pressure [hPa]'],
+            ['ones', 'past_prod','wind_speed [m/s]'],
+            ['ones','wind_speed [m/s]','wind_direction [degress]'],
+            ['ones', 'wind_speed [m/s]','temperature [C]','pressure [hPa]','past_prod']]
 mse_list = []
 
 # Looping through features and sample sizes. Output will be a list with the shape:
@@ -143,6 +151,14 @@ for features in feat:
         mse = mean_squared_error(y_test, y_pred)  # 0.028742528161411984
         mse_list.append(mse)
 print(mse_list)
+
+# Plotting
+if plotting:
+    plt.scatter(data['wind_speed [m/s]'],data['production'],s=1)
+    plt.scatter(X_test[:,1],y_pred,s=10)
+    plt.xlabel('Wind speed')
+    plt.ylabel('Production')
+    plt.show
 
 
 #%% Step 4.1

@@ -61,11 +61,13 @@ def prepData():
     windXpressure = np.array((data['wind_speed [m/s]'] ** 3).values * data['pressure [hPa]'].values)
     data['wind_cubed'] = wind_cubed
     data['wind_energy'] = windXpressure
-    data['ones'] = 1
     data['production'] = df['Actual']
+    data['past_prod'] = data['production'].shift(periods = 24, fill_value=0)
 
     # %% Standardization
     attributeNames = np.asarray(data.columns)
+    # Not standardizing production
+    attributeNames = np.delete(attributeNames,[6,7])
     dfs = data.copy()
     mu_dfs = np.mean(dfs[attributeNames])
     std_dfs = np.std(dfs[attributeNames])
