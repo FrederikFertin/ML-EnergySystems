@@ -160,55 +160,130 @@ if plotting:
     plt.ylabel('Production')
     plt.show
 
+#%% 
+X = np.array(data[['ones', 'wind_speed [m/s]']])
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle=False)
 
 #%% Step 4.1
-poly = PolynomialFeatures(degree=2, include_bias=False)
 
-poly_features_train = poly.fit_transform(X_train.reshape(-1, 1))
-
-poly_features_test = poly.fit_transform(X_test.reshape(-1, 1))
-
-poly_reg_model = LinearRegression()
-
-poly_reg_model.fit(poly_features_train, y_train)
-
-y_pred = poly_reg_model.predict(poly_features_test)
-
-mse = mean_squared_error(y_test, y_pred)
 
 #%% Step 4.2
 # Gaussian kernel 
-def gaussian_kernel(x_t,x_u,sigma=0.05):
+def gaussian_kernel(x_t,x_u,sigma=0.5):
+    # Finds the weight of a data point x_t given a fitting point x_u
     return  np.exp(-np.linalg.norm(x_t-x_u) / (2*sigma**2) )
 
-def closed_form_weighted_fit(X, y, W):
+def cf_weighted_fit(X, y, W):
     XT = np.transpose(X)
     return np.linalg.inv(XT @ W @ X) @ XT @ W @ y
 
-N = np.shape(X_train)[0]
+def weighted_regression_fit(X_train, y_train, M = 11, lambda_ = 0): # M is # fitting points
+    # Number of data points
+    N = np.shape(X_train)[0]
+    
+    # Quantiles 0.1,...,1.0
+    quantiles = np.linspace(0,1,M) 
+    
+    # Sorted indices based on column 1 (Wind speeds)
+    ix = np.argsort(X_train[:,1])
+    X_sorted = X_train[ix]
 
-quantiles = np.linspace(0,1,11) 
-ix = np.argsort(X_train[:,1])
-X_sorted = X_train[ix]
-q_ix = ((len(X_sorted[0])-1)*quantiles).astype(int)
-X_u = X_sorted[[q_ix]]
-y_u = np.zeros(len(X_u[0]))
-for i in range(len(X_u[0])):
-    W = np.zeros((N,N))
-    for j in range(len(X_train[0])):
-        W[j,j] = gaussian_kernel(X_train[j],X_u[i])
-    beta = closed_form_weighted_fit(X_train, y_train, W)
-    y_u[i] = closed_form_predict(beta, X_u[i])
+    # Indices of the chosen quantiles
+    q_ix = ((N-1)*quantiles).astype(int)
+    
+    # Fitting points X_u are data points corresponding to quantiles in 
+    # the feature wind speeds
+    X_u = X_sorted[q_ix]
+    
+    # Initialize y values of fitting points to zero
+    y_u = np.zeros(M)
+    
+    # Loop through fitting points 
+    for i in range(M):
+        W = np.zeros((N,N))
+        
+        # Find weights of all data points given fitting point i
+        for j in range(N):
+            W[j,j] = gaussian_kernel(X_train[j],X_u[i])
+        
+        # Find parameters beta and y value for fitting point i
+        if lambda_ > 0:
+            beta = cf_regu_weighted_fit(X_train, y_train, W, lambda_)
+        else:
+            beta = cf_weighted_fit(X_train, y_train, W)
+        y_u[i] = closed_form_predict(beta, X_u[i])
+    
+    return X_u, y_u
 
+def weighted_regression_predict(X_test, X_u, y_u):
+    # Number of test points
+    N = np.shape(X_test)[0]
+    
+    # Number of fitting points
+    M = np.shape(X_u)[0]
+    
+    y_pred = np.zeros(N)
+    
+    # Loop through test points
+    for j in range(N):
+        
+        # Loop through fitting points and calculate the distances between 
+        # the test point and the fitting points 
+        dist = np.zeros(M)
+        for i in range(M):
+            dist[i] = np.linalg.norm(X_test[j] - X_u[i])
+        
+        # Find indices of the two nearest fitting points
+        min_ixs = np.argpartition(dist, 2)[:2]
+        
+        # Calculate alpha to perform linear interpolation between the two
+        # nearest fitting points: 
+        # alpha = dist 2nd nearest / (dist nearest + dist 2nd nearest)
+        alpha = dist[min_ixs[1]] / (dist[min_ixs[0]] + dist[min_ixs[1]]) 
+        
+        # y_pred = alpha*nearest + (1-alpha)*2nd_nearest
+        y_pred[j] = alpha * y_u[min_ixs[0]] + (1-alpha) * y_u[min_ixs[1]]
+    
+    return y_pred
+
+X_u, y_u = weighted_regression_fit(X_train, y_train)
+y_pred = weighted_regression_predict(X_test, X_u, y_u)
+mse = mean_squared_error(y_test, y_pred)
+print("MSE using weighted linear regression: " + str(mse))
 
 #%% Step 5.1
-def cf_reg_fit(X,y,lambda_):
+############# Linear Ridge regression ###############
+def cf_regu_fit(X,y,lambda_):
     XT = np.transpose(X)
     return np.linalg.inv(XT @ X + lambda_) @ XT @ y
 
+def cf_regu_weighted_fit(X, y, W, lambda_):
+    XT = np.transpose(X)
+    return np.linalg.inv(XT @ W @ X + lambda_) @ XT @ W @ y
 
+# Regularized linear regression
+beta_regu = cf_regu_fit(X_train,y_train,0.5)
+y_pred_train_regu = closed_form_predict(beta_regu, X_train)
+mse_train_regu = mean_squared_error(y_train,y_pred_train_regu)
+y_pred_test_regu = closed_form_predict(beta_regu, X_test)
+mse_test_regu = mean_squared_error(y_test,y_pred_test_regu)
+print("Regularized linear regression:")
+print("Model coefficients: ", beta_regu)
+print('Training mse: ', mse_train_regu)
+print("Test mse: ", mse_test_regu)
+print()
 
-
+# Regularized locally weighted regression 
+X_u_regu, y_u_regu = weighted_regression_fit(X_train, y_train, lambda_ = 0.5)
+y_pred_train_LW_regu = weighted_regression_predict(X_train, X_u, y_u)
+mse_train_LW_regu = mean_squared_error(y_train, y_pred_train_LW_regu)
+y_pred_test_LW_regu = weighted_regression_predict(X_test, X_u, y_u)
+mse_test_LW_regu = mean_squared_error(y_test, y_pred_test_LW_regu)
+print("Regularized locally weighted linear regression:")
+print('Training mse: ', mse_train_LW_regu)
+print("Test mse: ", mse_test_LW_regu)
+print()
 
 
 
