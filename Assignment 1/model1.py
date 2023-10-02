@@ -6,7 +6,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from createXY import prepData
 
-def stochastic_gradient_descent(X, y, N, lambda_):   
+def stochastic_gradient_descent(X, y, N, lambda_):
     theta_old = np.zeros((1,len(X[0,:])))
     theta_new = np.zeros(len(X[0,:]))
     mse_train = np.asarray([])

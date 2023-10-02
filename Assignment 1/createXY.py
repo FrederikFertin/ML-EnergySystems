@@ -76,8 +76,48 @@ def prepData():
         dfs[attributeNames[i]] = (dfs[attributeNames[i]] - mu_dfs[i]) / std_dfs[i]
 
     dfs['ones'] = 1
-
+    data['production'] = df['Actual']
+    
     return dfs
+
+def readRegPrice(file):
+    cwd = os.getcwd()
+    f = os.path.join(cwd,file)
+    df = pd.read_csv(f)
+    target_value = '"'
+    df = df.stack().str.replace(target_value,'').unstack()
+    column_mapping = {col: col.replace('"', '') for col in df.columns}
+    df.rename(columns=column_mapping, inplace=True)
+    df[df.columns[0].split(",")] = df[df.columns[0]].str.split(",",expand=True)
+    df = df[df.columns[-1]]
+    return df
+
+
+def getPrices():
+    # Regulation prices:
+    df_up21 = readRegPrice('Up-regulation price_2021.csv')
+    df_up22 = readRegPrice('Up-regulation price_2022.csv')
+    df_down21 = readRegPrice('Down-regulation price_2021.csv')
+    df_down22 = readRegPrice('Down-regulation price_2022.csv')
+    up = np.append(df_up21.values,df_up22.values)
+    down = np.append(df_down21.values,df_down22.values)
+    
+    #Day ahead prices:
+    cwd = os.getcwd()
+    f_ahead = os.path.join(cwd,'Day-ahead price.xlsx')
+    df_ahead = pd.read_excel(f_ahead)
+    df_ = df_ahead.loc[df_ahead['PriceArea'] == 'DK2'].reset_index(drop = True)
+    df_ = df_.loc[df_['HourUTC'] >= '2021']
+    df_ = df_.loc[df_['HourUTC'] < '2023']
+    df_ = df_[df_.columns[-1]]
+    
+    df = pd.DataFrame()
+    df['Spot'] = df_
+    df['Up'] = up
+    df['Down'] = down
+    
+    return df
+
 
 if __name__ == "__main__":
     data = prepData()

@@ -12,11 +12,19 @@ from datetime import datetime
 import numpy as np
 import gurobipy as gb
 from gurobipy import GRB
+from createXY import getPrices
 
 #%%Prepare price data
+cwd = os.getcwd()
+f_up = os.path.join(cwd,'Up-regulation price_2021.csv')
+
+
+f_ahead = os.path.join(cwd,'Day-ahead price.xlsx')
+
 
 #dayahead - selecting the correct price arrea, replacing the commas
-df_ahead = pd.read_csv(r"C:\Users\julia\OneDrive\Dokumente\DTU\machine L for E\Assignment 1\Day-ahead price.csv", sep = ";")
+#df_ahead = pd.read_csv(r"C:\Users\julia\OneDrive\Dokumente\DTU\machine L for E\Assignment 1\Day-ahead price.csv", sep = ";")
+df_ahead = pd.read_excel(f_ahead)
 df_ahead = df_ahead[df_ahead['PriceArea'] == 'DK2'].reset_index(drop = True)
 df_ahead = df_ahead.stack().str.replace(',', '.').unstack()
 
@@ -63,28 +71,32 @@ model = gb.Model("Revenue")
 #create variables
 time = range(24)
 b = model.addVars(time, name = 'power bid')
-a = model.addVar(vtype=GRB.BINARY, name='a')
+a = model.addVars(time, vtype=GRB.BINARY, name='a')
 over = model.addVars(time, name = 'overproduction')
 under = model.addVars(time, name = 'underproduction')
-M = 0.01 
+M = 0.01
 
-
+"""
 # Adding constraints for over and under production 
 #if power[t] > bid[t], then a = 1, otherwise a = 0
 model.addConstrs((power[t] >= b[t] - M * (1 - a) 
                  for t in time), ({'name': 'M_constr1' + str(t)} for t in time))
 model.addConstrs((power[t] <= b[t] + M * a 
                  for t in time), ({'name': 'M_constr2' + str(t)} for t in time))
-
+"""
 
 # Add indicator constraints
+model.addConstrs((over[t]  <= (power[t]-b[t]) * a[t]) for t in time)
+model.addConstrs((under[t] >= (b[t]-power[t]) * (1 - a[t])) for t in time)
+
+"""
 model.addConstr(((a==0) >> (over[t] == 0) for t in time),
                      ({'name': "indicator_constr1" + str(t)} for t in time))
 model.addConstr(((a==0) >> (under[t] == (b[t] - power[t]) for t in time),
                      ({'name': "indicator_constr2" + str(t)} for t in time)))
 model.addConstrs(((a == 1) >> ((over[t] == power[t]-b[t])  & (under[t] == 0))
                 for t in time), ({'name': "indicator_constr3" + str(t)} for t in time))
-
+"""
 
 
 objective = gb.quicksum(price_ahead[t]*b[t] + price_down[t]*over[t] - price_up[t]*under[t] for t in time)
