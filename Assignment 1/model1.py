@@ -160,13 +160,24 @@ if plotting:
     plt.ylabel('Production')
     plt.show
 
-#%% 
+#%% Chosen features for the extensions 
 X = np.array(data[['ones', 'wind_speed [m/s]']])
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle=False)
 
 #%% Step 4.1
+X_poly_train = np.transpose(np.array([X_train[:,0],X_train[:,1],X_train[:,1]**2,X_train[:,1]**3]))
+X_poly_test = np.transpose(np.array([X_test[:,0],X_test[:,1],X_test[:,1]**2,X_test[:,1]**3]))
 
+beta = closed_form_fit(X_poly_train, y_train)
+y_pred_train = closed_form_predict(beta, X_poly_train)
+mse_train = mean_squared_error(y_train, y_pred_train)
+y_pred_test = closed_form_predict(beta, X_poly_test)
+mse_test = mean_squared_error(y_test, y_pred_test)
+print("Polynomial regression:")
+print("Model coefficients: ", beta)
+print('Training mse: ', mse_train)
+print("Test mse: ", mse_test)
 
 #%% Step 4.2
 # Gaussian kernel 
@@ -285,11 +296,85 @@ print('Training mse: ', mse_train_LW_regu)
 print("Test mse: ", mse_test_LW_regu)
 print()
 
+#%% Step 5.2-6 Linear Regression 
+# Number of cross-validation iterations 
+K = 5
 
+# Values of the hyperparameter to be examined
+lambda_ = np.linspace(100,300,10)
 
+mse_lr = []
 
+# Loop through lambda values 
+for l in lambda_:
+    
+    # Redefine training sets 
+    xx_train, yy_train = X_train, y_train
+    
+    mse_lr.append(0)
+    
+    # Loop through cross-validation steps 
+    for k in range(K):
+        xx_train, xx_val, yy_train, yy_val = train_test_split(xx_train, yy_train, test_size=1/((K+1)-k), shuffle=False)
+        
+        beta = cf_regu_fit(xx_train,yy_train,l)
+        y_pred = closed_form_predict(beta, xx_val)
+        mse_lr[-1] += mean_squared_error(yy_val,y_pred) / K
 
+print(mse_lr)
+print()
 
+# Find the lambda value which results in the lowest validation mse  
+min_ix = np.argmin(np.asarray(mse_lr))
+lambda_ = lambda_[min_ix]
+
+# Train the best regularized model on entire training set and evaluate on 
+# test set
+beta = cf_regu_fit(X_train,y_train,lambda_)
+y_pred = closed_form_predict(beta, X_test)
+mse_lr = mean_squared_error(y_test,y_pred)
+print("Best regularized linear regression:")
+print("Model coefficients: ", beta)
+print("Test mse: ", mse_lr)
+print()
+
+#%% Step 5.2-6 Locally weighted regression
+
+# Values of the hyperparameter to be examined
+lambda_ = np.linspace(30,50,10)
+
+mse_lw = []
+
+# Loop through lambda values 
+for l in lambda_:
+    
+    # Redefine training sets 
+    xx_train, yy_train = X_train, y_train
+    
+    mse_lw.append(0)
+    
+    # Loop through cross-validation steps 
+    for k in range(K):
+        xx_train, xx_val, yy_train, yy_val = train_test_split(xx_train, yy_train, test_size=1/((K+1)-k), shuffle=False)
+        
+        X_u, y_u = weighted_regression_fit(xx_train, yy_train, lambda_ = l)
+        y_pred = weighted_regression_predict(xx_val, X_u, y_u)
+        mse_lw[-1] += mean_squared_error(yy_val, y_pred) / K
+
+print(mse_lw)        
+
+# Find the lambda value which results in the lowest validation mse  
+min_ix = np.argmin(np.asarray(mse_lr))
+lambda_ = lambda_[min_ix]
+
+# Train the best regularized model on entire training set and evaluate on 
+# test set
+X_u, y_u = weighted_regression_fit(X_train, y_train, lambda_ = lambda_)
+y_pred = weighted_regression_predict(X_test, X_u, y_u)
+mse_lw = mean_squared_error(y_test, y_pred)
+print("Best regularized locally weighted linear regression:")
+print("Test mse: ", mse_lr)
+print()
 
 
 
