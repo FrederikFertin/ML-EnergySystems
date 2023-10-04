@@ -6,15 +6,16 @@ Created on Sun Oct  1 16:50:53 2023
 """
 
 import pandas as pd
-import os, csv
-import matplotlib.pyplot as plt
+import os
 from datetime import datetime
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
-from numpy.linalg import inv
+
 # from model1 import closed_form_fit,closed_form_predict
+# from sklearn.linear_model import LinearRegression
+# from numpy.linalg import inv
+
 def closed_form_fit(X, y):
     XT = np.transpose(X)
     return np.linalg.inv(XT @ X) @ XT @ y
@@ -55,8 +56,6 @@ def prepData():
     data.set_index('HourUTC', inplace=True)
 
     # %% Step 2: Creating the training and test datasets
-    power_prod_prev_36 = np.array(np.append(df['Actual'].values[0:36], df['Actual'].values[0:len(df.Actual) - 36]),
-                                  dtype=object)
     wind_cubed = np.array((data['wind_speed [m/s]'] ** 3).values)
     windXpressure = np.array((data['wind_speed [m/s]'] ** 3).values * data['pressure [hPa]'].values)
     data['wind_cubed'] = wind_cubed

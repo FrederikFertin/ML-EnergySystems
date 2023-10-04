@@ -1,18 +1,8 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Sep 28 13:58:57 2023
-
-@author: julia
-"""
-
 import pandas as pd
-import os, csv
-import matplotlib.pyplot as plt
-from datetime import datetime
+import os
 import numpy as np
 import gurobipy as gb
 from gurobipy import GRB
-from createXY import getPrices
 
 #%%Prepare price data
 cwd = os.getcwd()
