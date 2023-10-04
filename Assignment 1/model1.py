@@ -59,6 +59,7 @@ def closed_form_predict(beta,X):
 # "model1"
 # "model2"
 task = "model1"
+split = 0.75
 
 data, mu_data, std_data = prepData()
 bids = loadBids()
@@ -77,13 +78,13 @@ spot = np.array(prices['Spot'])
 up = np.array(prices['Up'])
 down = np.array(prices['Down'])
 
-_, _, spot_test, up_test = train_test_split(spot, up, test_size=0.4, shuffle=False)
+_, _, spot_test, up_test = train_test_split(spot, up, test_size=0.75, shuffle=False)
 
 filename = os.path.join(cwd, 'wind power clean.csv')
 power = pd.read_csv(filename)
 power = np.array(power['Actual'])
 
-_, _, down_test, power_test = train_test_split(down, power, test_size=0.4, shuffle=False)
+_, _, down_test, power_test = train_test_split(down, power, test_size=0.75, shuffle=False)
 
 
 '''
@@ -109,7 +110,7 @@ X = np.array(data[['ones','wind_speed [m/s]']])
 
 X_slice = X[0:100]
 y_slice = y[0:100]
-X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
+X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.75, shuffle=False)
 
 
 # Solution using gradient descent 
@@ -174,7 +175,7 @@ for features in feat:
         X_slice = X[0:size]
         y_slice = y[0:size]
 
-        X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
+        X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.75, shuffle=False)
 
         # Closed form linear regression:
         beta = closed_form_fit(X_train, y_train)
@@ -194,7 +195,7 @@ if plotting:
 #%% Chosen features for the extensions 
 X = np.array(data[['ones', 'wind_speed [m/s]']])
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle=False)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.75, shuffle=False)
 
 #%% Step 4.1
 X_poly_train = np.transpose(np.array([X_train[:,0],X_train[:,1],X_train[:,1]**2])) #,X_train[:,1]**3]))
