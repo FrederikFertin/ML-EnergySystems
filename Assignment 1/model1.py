@@ -374,7 +374,7 @@ X_u, y_u = weighted_regression_fit(X_train, y_train, lambda_ = lambda_)
 y_pred = weighted_regression_predict(X_test, X_u, y_u)
 mse_lw = mean_squared_error(y_test, y_pred)
 print("Best regularized locally weighted linear regression:")
-print("Test mse: ", mse_lr)
+print("Test mse: ", mse_lw)
 print()
 
 
