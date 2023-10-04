@@ -13,6 +13,7 @@ from sklearn.metrics import mean_squared_error
 # from sklearn.linear_model import LinearRegression
 # from numpy.linalg import inv
 
+
 def prepData():
     #Feature data and actual wind power production:
     cwd = os.getcwd()
@@ -66,6 +67,7 @@ def prepData():
     
     return dfs, mu_dfs, std_dfs
 
+
 def readRegPrice(file):
     cwd = os.getcwd()
     f = os.path.join(cwd,file)
@@ -103,6 +105,7 @@ def getPrices():
     df['Down'] = down
     
     return df
+
 
 def loadBids():
     cwd = os.getcwd()

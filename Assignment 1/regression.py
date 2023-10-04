@@ -25,13 +25,13 @@ def cf_fit(X, y):
     return np.linalg.inv(XT @ X) @ XT @ y
 
 
-def cf_predict(beta,X):
+def cf_predict(beta, X):
     """ Closed form fit """
     return X @ beta
 
 
 #%% Step 4.2
-def gaussian_kernel(x_t,x_u,sigma=0.5):
+def gaussian_kernel(x_t, x_u, sigma=0.5):
     """ Finds the weight of a data point x_t given a fitting point x_u """
     return  np.exp(-np.linalg.norm(x_t-x_u) / (2*sigma**2) )
 
@@ -42,7 +42,7 @@ def cf_weighted_fit(X, y, W):
     return np.linalg.inv(XT @ W @ X) @ XT @ W @ y
 
 
-def weighted_regression_fit(X_train, y_train, M = 10, lambda_ = 0, regularization = 'L2'): # M is # fitting points
+def weighted_regression_fit(X_train, y_train, M = 10, lambda_ = 0, regularization='L2'): # M is # fitting points
     """ Weighted regression fit """
     # Number of data points
     N = np.shape(X_train)[0]
@@ -125,14 +125,14 @@ def weighted_regression_predict(X_test, X_u, y_u):
 
 #%% Step 5
 ############# L1 - Lasso Ridge regularization ###############
-def l1_fit(X,y,lambda_,W=None):
+def l1_fit(X, y, lambda_, W=None):
     """ Fitting beta values using L1 regularization """
     
     model = gb.Model("L1 regularization")
     
     #create variables
     T, b = np.shape(X)
-    if W == None:
+    if W is None:
         W = np.eye(T)
     T, b = range(T), range(b)
     
