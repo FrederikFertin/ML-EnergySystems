@@ -166,8 +166,8 @@ X = np.array(data[['ones', 'wind_speed [m/s]']])
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, shuffle=False)
 
 #%% Step 4.1
-X_poly_train = np.transpose(np.array([X_train[:,0],X_train[:,1],X_train[:,1]**2,X_train[:,1]**3]))
-X_poly_test = np.transpose(np.array([X_test[:,0],X_test[:,1],X_test[:,1]**2,X_test[:,1]**3]))
+X_poly_train = np.transpose(np.array([X_train[:,0],X_train[:,1],X_train[:,1]**2])) #,X_train[:,1]**3]))
+X_poly_test = np.transpose(np.array([X_test[:,0],X_test[:,1],X_test[:,1]**2])) #,X_test[:,1]**3]))
 
 beta = closed_form_fit(X_poly_train, y_train)
 y_pred_train = closed_form_predict(beta, X_poly_train)
@@ -189,7 +189,7 @@ def cf_weighted_fit(X, y, W):
     XT = np.transpose(X)
     return np.linalg.inv(XT @ W @ X) @ XT @ W @ y
 
-def weighted_regression_fit(X_train, y_train, M = 11, lambda_ = 0): # M is # fitting points
+def weighted_regression_fit(X_train, y_train, M = 10, lambda_ = 0): # M is # fitting points
     # Number of data points
     N = np.shape(X_train)[0]
     
@@ -251,8 +251,9 @@ def weighted_regression_predict(X_test, X_u, y_u):
         # Calculate alpha to perform linear interpolation between the two
         # nearest fitting points: 
         # alpha = dist 2nd nearest / (dist nearest + dist 2nd nearest)
-        alpha = dist[min_ixs[1]] / (dist[min_ixs[0]] + dist[min_ixs[1]]) 
-        
+        alpha = dist[min_ixs[1]] / (dist[min_ixs[0]] + dist[min_ixs[1]])
+        alpha = np.nan_to_num(alpha)
+
         # y_pred = alpha*nearest + (1-alpha)*2nd_nearest
         y_pred[j] = alpha * y_u[min_ixs[0]] + (1-alpha) * y_u[min_ixs[1]]
     
