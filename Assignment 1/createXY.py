@@ -118,6 +118,13 @@ def getPrices():
     
     return df
 
+def loadBids():
+    cwd = os.getcwd()
+    """ Load actual wind power from cwd """
+    temp_dir = os.path.join(cwd, 'optimal bids.csv')
+    df = pd.read_csv(temp_dir)
+    
+    return np.array(df['Opt-Bid'].values)
 
 if __name__ == "__main__":
     data = prepData()

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
-from createXY import prepData
+from createXY import prepData, loadBids
 
 def stochastic_gradient_descent(X, y, N, lambda_):
     theta_old = np.zeros((1,len(X[0,:])))
@@ -53,7 +53,16 @@ def closed_form_predict(beta,X):
 
 
 #%% Data set
+# "model1"
+# "model2"
+task = "model2"
+
 data = prepData()
+bids = loadBids()
+if task == "model1":
+    y = np.array(data['production'])
+elif task == "model2":
+    y = bids
 
 '''
 #%% Dummy data sets 
@@ -75,7 +84,7 @@ print("Test mse: ", mse_test_SGD)
 """
 # Choosing only 100 samples and windspeed
 X = np.array(data[['ones','wind_speed [m/s]']])
-y = np.array(data['production'])
+
 X_slice = X[0:100]
 y_slice = y[0:100]
 X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
@@ -134,7 +143,6 @@ mse_list = []
 
 # Looping through features and sample sizes. Output will be a list with the shape:
     # Features[0], size[0], ..., size[-1], features[1] and so on
-y = np.array(data['production'])
 for features in feat:
     mse_list.append(features)
     for size in sizes:
