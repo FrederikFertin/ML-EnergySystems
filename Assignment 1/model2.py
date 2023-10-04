@@ -6,16 +6,24 @@ import matplotlib.pyplot as plt
 
 # Scikit-learn
 from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+# from sklearn.preprocessing import PolynomialFeatures
+# from sklearn.linear_model import LinearRegression
 
 # Local scripts and functions
 from createXY import prepData, loadBids
-from createOptBids import runOpt, revenue_calc
+from createOptBids import revenue_calc
 from regression import *
 
-#%% Import data
+
+#%% Data set
+split = 0.25
+
+data, mu_data, std_data = prepData()
+y = loadBids()
+
+
+#%% Prepare price data for revenue calculations
 cwd = os.getcwd()
 
 filename = os.path.join(cwd, 'Prices.csv')
@@ -33,10 +41,7 @@ power = np.array(power['Actual'])
 
 _, _, down_test, power_test = train_test_split(down, power, test_size=0.4, shuffle=False)
 
-filename = os.path.join(cwd, 'optimal bids.csv')
-opt_bids = pd.read_csv(filename)
 
-
-#%%
+#%% Feature
 
 

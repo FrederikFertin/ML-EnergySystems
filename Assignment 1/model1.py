@@ -6,12 +6,12 @@ import matplotlib.pyplot as plt
 
 # Scikit-learn
 from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import PolynomialFeatures
-from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+# from sklearn.preprocessing import PolynomialFeatures
+# from sklearn.linear_model import LinearRegression
 
 # Local scripts and functions
-from createXY import prepData, loadBids
+from createXY import prepData
 from createOptBids import runOpt, revenue_calc
 from regression import *
 
@@ -44,19 +44,13 @@ def stochastic_gradient_descent(X, y, N, lambda_):
 """
 
 #%% Data set
-# "model1"
-# "model2"
-task = "model1"
 split = 0.25
 
 data, mu_data, std_data = prepData()
-bids = loadBids()
-if task == "model1":
-    y = np.array(data['production'])
-elif task == "model2":
-    y = bids
+y = np.array(data['production'])
 
-#%%Prepare price data
+
+#%% Prepare price data for revenue calculations
 cwd = os.getcwd()
 
 filename = os.path.join(cwd, 'Prices.csv')
