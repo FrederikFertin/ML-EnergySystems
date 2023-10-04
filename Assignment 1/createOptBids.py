@@ -3,6 +3,7 @@ import os
 import numpy as np
 import gurobipy as gb
 from gurobipy import GRB
+# import time as time
 
 #%%Prepare price data
 cwd = os.getcwd()
@@ -19,21 +20,25 @@ power = np.array(power['Actual'])
 
 
 #%%Create optimization model
+# start1 = time.time()
+
 model = gb.Model("Revenue")
 
 #create variables
-time = range(len(spot))
-b = model.addVars(time, vtype=GRB.CONTINUOUS, lb = 0, ub = 1, name = 'power_bid')
-over = model.addVars(time, vtype=GRB.CONTINUOUS, lb = 0, ub = 1, name = 'overproduction')
-under = model.addVars(time, vtype=GRB.CONTINUOUS, lb = 0, ub = 1, name = 'underproduction')
-a = model.addVars(time, vtype=GRB.BINARY, name='a')
+T = range(len(spot))
+b = model.addVars(T, vtype=GRB.CONTINUOUS, lb = 0, ub = 1, name = 'power_bid')
+over = model.addVars(T, vtype=GRB.CONTINUOUS, lb = 0, ub = 1, name = 'overproduction')
+under = model.addVars(T, vtype=GRB.CONTINUOUS, lb = 0, ub = 1, name = 'underproduction')
+a = model.addVars(T, vtype=GRB.BINARY, name='a')
 
 # Add constraints
-model.addConstrs((over[t]  <= (power[t]-b[t]) * a[t]) for t in time)
-model.addConstrs((under[t] >= (b[t]-power[t]) * (1 - a[t])) for t in time)
+#model.addConstrs((over[t]  <= (power[t]-b[t]) * a[t]) for t in T)
+#model.addConstrs((under[t] >= (b[t]-power[t]) * (1 - a[t])) for t in T)
+# Faster approach:
+model.addConstrs((over[t]  == (power[t]-b[t]) * a[t]) for t in T)
+model.addConstrs((under[t] == (b[t]-power[t]) * (1 - a[t])) for t in T)
 
-
-objective = gb.quicksum(spot[t]*b[t] + down[t]*over[t] - up[t]*under[t] for t in time)
+objective = gb.quicksum(spot[t]*b[t] + down[t]*over[t] - up[t]*under[t] for t in T)
 model.setObjective(objective, gb.GRB.MAXIMIZE)
 
 model.optimize()
@@ -43,6 +48,7 @@ max_revenue = model.ObjVal
 
 print('max_revenue:', max_revenue)
 
+# end1 = time.time()
 #%% Save optimal bids
 bids = np.zeros(len(b))
 
@@ -52,5 +58,5 @@ for i in range(len(b)):
 df_bid = pd.DataFrame()
 df_bid['Opt-Bid'] = bids
 
-filename = os.path.join(cwd,'optimal bids.csv')
-df_bid.to_csv(filename)
+#filename = os.path.join(cwd,'optimal bids.csv')
+#df_bid.to_csv(filename)
