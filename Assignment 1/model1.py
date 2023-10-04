@@ -5,6 +5,9 @@ from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
 from createXY import prepData, loadBids
+import os
+import pandas as pd
+from createOptBids import runOpt, revenue_calc
 
 def stochastic_gradient_descent(X, y, N, lambda_):
     theta_old = np.zeros((1,len(X[0,:])))
@@ -55,14 +58,33 @@ def closed_form_predict(beta,X):
 #%% Data set
 # "model1"
 # "model2"
-task = "model2"
+task = "model1"
 
-data = prepData()
+data, mu_data, std_data = prepData()
 bids = loadBids()
 if task == "model1":
     y = np.array(data['production'])
 elif task == "model2":
     y = bids
+
+#%%Prepare price data
+cwd = os.getcwd()
+
+filename = os.path.join(cwd, 'Prices.csv')
+prices = pd.read_csv(filename)
+spot = np.array(prices['Spot'])
+
+up = np.array(prices['Up'])
+down = np.array(prices['Down'])
+
+_, _, spot_test, up_test = train_test_split(spot, up, test_size=0.4, shuffle=False)
+
+filename = os.path.join(cwd, 'wind power clean.csv')
+power = pd.read_csv(filename)
+power = np.array(power['Actual'])
+
+_, _, down_test, power_test = train_test_split(down, power, test_size=0.4, shuffle=False)
+
 
 '''
 #%% Dummy data sets 
@@ -127,10 +149,11 @@ print("Model coefficients: ", beta_CF)
 print('Training mse: ', mse_train_CF)
 print("Test mse: ", mse_test_CF)
 '''
-plotting = False
+
+plotting = True
 if plotting:    
     feat = [['ones', 'wind_speed [m/s]']]
-    sizes = [len(data)]
+    sizes = [10000]
 else:
     sizes = [100, 1000, len(data)]
     feat = [['ones', 'wind_speed [m/s]'], ['ones', 'wind_cubed'],
@@ -162,9 +185,9 @@ print(mse_list)
 
 # Plotting
 if plotting:
-    plt.scatter(data['wind_speed [m/s]'],data['production'],s=1)
-    plt.scatter(X_test[:,1],y_pred,s=10)
-    plt.xlabel('Wind speed')
+    plt.scatter(np.array(data['wind_speed [m/s]'])*std_data[0]+mu_data[0],data['production'],s=1)
+    plt.scatter(X_test[:,1]*std_data[0]+mu_data[0],y_pred,s=1)
+    plt.xlabel('Mean wind speed')
     plt.ylabel('Production')
     plt.show
 
@@ -346,6 +369,9 @@ print("Best regularized linear regression:")
 print("Model coefficients: ", beta)
 print("Test mse: ", mse_lr)
 print()
+
+bid, _ = runOpt(y_pred, spot_test, up_test, down_test)
+revenue = revenue_calc(bid, y_test, spot_test, up_test, down_test)
 
 #%% Step 5.2-6 Locally weighted regression
 

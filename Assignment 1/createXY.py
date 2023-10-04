@@ -75,9 +75,8 @@ def prepData():
         dfs[attributeNames[i]] = (dfs[attributeNames[i]] - mu_dfs[i]) / std_dfs[i]
 
     dfs['ones'] = 1
-    data['production'] = df['Actual'].values
     
-    return dfs
+    return dfs, mu_dfs, std_dfs
 
 def readRegPrice(file):
     cwd = os.getcwd()
