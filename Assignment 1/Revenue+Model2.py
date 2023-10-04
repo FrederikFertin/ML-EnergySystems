@@ -1,6 +1,5 @@
 import pandas as pd
-import os, csv
-import matplotlib.pyplot as plt
+import os
 from datetime import datetime
 import numpy as np
 from sklearn.model_selection import train_test_split

@@ -6,15 +6,16 @@ Created on Sun Oct  1 16:50:53 2023
 """
 
 import pandas as pd
-import os, csv
-import matplotlib.pyplot as plt
+import os
 from datetime import datetime
 import numpy as np
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
-from numpy.linalg import inv
+
 # from model1 import closed_form_fit,closed_form_predict
+# from sklearn.linear_model import LinearRegression
+# from numpy.linalg import inv
+
 def closed_form_fit(X, y):
     XT = np.transpose(X)
     return np.linalg.inv(XT @ X) @ XT @ y
@@ -55,14 +56,12 @@ def prepData():
     data.set_index('HourUTC', inplace=True)
 
     # %% Step 2: Creating the training and test datasets
-    power_prod_prev_36 = np.array(np.append(df['Actual'].values[0:36], df['Actual'].values[0:len(df.Actual) - 36]),
-                                  dtype=object)
     wind_cubed = np.array((data['wind_speed [m/s]'] ** 3).values)
     windXpressure = np.array((data['wind_speed [m/s]'] ** 3).values * data['pressure [hPa]'].values)
     data['wind_cubed'] = wind_cubed
     data['wind_energy'] = windXpressure
-    data['production'] = df['Actual']
-    data['past_prod'] = data['production'].shift(periods = 24, fill_value=0)
+    data['production'] = df['Actual'].values
+    data['past_prod'] = data['production'].shift(periods = 24, fill_value=np.mean(data['production'].iloc[0:24]))
 
     # %% Standardization
     attributeNames = np.asarray(data.columns)
@@ -76,7 +75,7 @@ def prepData():
         dfs[attributeNames[i]] = (dfs[attributeNames[i]] - mu_dfs[i]) / std_dfs[i]
 
     dfs['ones'] = 1
-    data['production'] = df['Actual']
+    data['production'] = df['Actual'].values
     
     return dfs
 
@@ -118,6 +117,13 @@ def getPrices():
     
     return df
 
+def loadBids():
+    cwd = os.getcwd()
+    """ Load actual wind power from cwd """
+    temp_dir = os.path.join(cwd, 'optimal bids.csv')
+    df = pd.read_csv(temp_dir)
+    
+    return np.array(df['Opt-Bid'].values)
 
 if __name__ == "__main__":
     data = prepData()
