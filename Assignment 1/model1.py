@@ -44,7 +44,7 @@ def stochastic_gradient_descent(X, y, N, lambda_):
 """
 
 #%% Data set
-split = 0.25
+split = 0.4
 
 data, mu_data, std_data = prepData()
 y = np.array(data['production'])
