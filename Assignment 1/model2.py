@@ -1,15 +1,19 @@
-
+# General packages
 import numpy as np
-from sklearn.metrics import mean_squared_error
+import os
+import pandas as pd
 import matplotlib.pyplot as plt
+
+# Scikit-learn
+from sklearn.metrics import mean_squared_error
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+
+# Local scripts and functions
 from createXY import prepData, loadBids
-import os
-import pandas as pd
 from createOptBids import runOpt, revenue_calc
-from model1 import *
+from regression import *
 
 #%% Import data
 cwd = os.getcwd()

@@ -1,29 +1,17 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Oct  1 16:50:53 2023
-
-@author: Asmus
-"""
-
+# General packages
 import pandas as pd
 import os
 from datetime import datetime
 import numpy as np
+
+# Scikit-learn
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
+# Unused
 # from model1 import closed_form_fit,closed_form_predict
 # from sklearn.linear_model import LinearRegression
 # from numpy.linalg import inv
-
-def closed_form_fit(X, y):
-    XT = np.transpose(X)
-    return np.linalg.inv(XT @ X) @ XT @ y
-
-
-def closed_form_predict(beta, X):
-    return X @ beta
-
 
 def prepData():
     #Feature data and actual wind power production:
@@ -124,7 +112,10 @@ def loadBids():
     
     return np.array(df['Opt-Bid'].values)
 
+
 if __name__ == "__main__":
+    from regression import cf_fit, cf_predict
+    
     data = prepData()
     
     # %% Step 3: First sample data
@@ -145,8 +136,8 @@ if __name__ == "__main__":
             X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
     
             # Closed form linear regression:
-            beta = closed_form_fit(X_train, y_train)
-            y_pred = closed_form_predict(beta, X_test)
+            beta = cf_fit(X_train, y_train)
+            y_pred = cf_predict(beta, X_test)
             mse = mean_squared_error(y_test, y_pred)  # 0.028742528161411984
             mse_list.append(mse)
     print(mse_list)

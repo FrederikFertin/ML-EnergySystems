@@ -43,7 +43,7 @@ def runOpt(y_pred, spot, up, down):
 
 
 ## Revenue Calculation
-def revenue_calc(y_test,y_bid, ahead_rev, Up_rev, Down_rev):
+def revenue_calc(y_test, y_bid, ahead_rev, Up_rev, Down_rev):
    act_pow = y_test
    bid_pow = y_bid
    revenue = 0
