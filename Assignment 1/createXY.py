@@ -6,22 +6,18 @@ Created on Sun Oct  1 16:50:53 2023
 """
 
 import pandas as pd
-import os, csv
-import matplotlib.pyplot as plt
+import os
 from datetime import datetime
 import numpy as np
+
+# Scikit-learn
 from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error
-from numpy.linalg import inv
+
+# Unused
 # from model1 import closed_form_fit,closed_form_predict
-def closed_form_fit(X, y):
-    XT = np.transpose(X)
-    return np.linalg.inv(XT @ X) @ XT @ y
-
-
-def closed_form_predict(beta, X):
-    return X @ beta
+# from sklearn.linear_model import LinearRegression
+# from numpy.linalg import inv
 
 
 def prepData():
@@ -54,17 +50,15 @@ def prepData():
     data = pd.read_csv(temp_dir)
     data.set_index('HourUTC', inplace=True)
 
-    #Step 2: Creating the training and test datasets
-    power_prod_prev_36 = np.array(np.append(df['Actual'].values[0:36], df['Actual'].values[0:len(df.Actual) - 36]),
-                                  dtype=object)
+    # %% Step 2: Creating the training and test datasets
     wind_cubed = np.array((data['wind_speed [m/s]'] ** 3).values)
     windXpressure = np.array((data['wind_speed [m/s]'] ** 3).values * data['pressure [hPa]'].values)
     data['wind_cubed'] = wind_cubed
     data['wind_energy'] = windXpressure
-    data['production'] = df['Actual']
-    data['past_prod'] = data['production'].shift(periods = 24, fill_value=0)
+    data['production'] = df['Actual'].values
+    data['past_prod'] = data['production'].shift(periods = 24, fill_value=np.mean(data['production'].iloc[0:24]))
 
-    #Standardization
+    # %% Standardization
     attributeNames = np.asarray(data.columns)
     # Not standardizing production
     attributeNames = np.delete(attributeNames,[6,7])
@@ -77,9 +71,60 @@ def prepData():
 
     dfs['ones'] = 1
 
-    return dfs
+    return dfs, mu_dfs, std_dfs
+
+
+def readRegPrice(file):
+    cwd = os.getcwd()
+    f = os.path.join(cwd,file)
+    df = pd.read_csv(f)
+    target_value = '"'
+    df = df.stack().str.replace(target_value,'').unstack()
+    column_mapping = {col: col.replace('"', '') for col in df.columns}
+    df.rename(columns=column_mapping, inplace=True)
+    df[df.columns[0].split(",")] = df[df.columns[0]].str.split(",",expand=True)
+    df = df[df.columns[-1]]
+    return df
+
+
+def getPrices():
+    # Regulation prices:
+    df_up21 = readRegPrice('Up-regulation price_2021.csv')
+    df_up22 = readRegPrice('Up-regulation price_2022.csv')
+    df_down21 = readRegPrice('Down-regulation price_2021.csv')
+    df_down22 = readRegPrice('Down-regulation price_2022.csv')
+    up = np.append(df_up21.values,df_up22.values)
+    down = np.append(df_down21.values,df_down22.values)
+
+    #Day ahead prices:
+    cwd = os.getcwd()
+    f_ahead = os.path.join(cwd,'Day-ahead price.xlsx')
+    df_ahead = pd.read_excel(f_ahead)
+    df_ = df_ahead.loc[df_ahead['PriceArea'] == 'DK2'].reset_index(drop = True)
+    df_ = df_.loc[df_['HourUTC'] >= '2021']
+    df_ = df_.loc[df_['HourUTC'] < '2023']
+    df_ = df_[df_.columns[-1]]
+
+    df = pd.DataFrame()
+    df['Spot'] = df_
+    df['Up'] = up
+    df['Down'] = down
+
+    return df
+
+
+def loadBids():
+    cwd = os.getcwd()
+    """ Load actual wind power from cwd """
+    temp_dir = os.path.join(cwd, 'optimal bids.csv')
+    df = pd.read_csv(temp_dir)
+
+    return np.array(df['Opt-Bid'].values)
+
 
 if __name__ == "__main__":
+    from regression import cf_fit, cf_predict
+
     data = prepData()
     
     # %% Step 3: First sample data
@@ -100,8 +145,8 @@ if __name__ == "__main__":
             X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
     
             # Closed form linear regression:
-            beta = closed_form_fit(X_train, y_train)
-            y_pred = closed_form_predict(beta, X_test)
+            beta = cf_fit(X_train, y_train)
+            y_pred = cf_predict(beta, X_test)
             mse = mean_squared_error(y_test, y_pred)  # 0.028742528161411984
             mse_list.append(mse)
     print(mse_list)
