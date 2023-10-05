@@ -312,48 +312,74 @@ print("Test mse: ", mse_lw)
 print()
 
 # %% Step 7.1
-Plotting = False
+n_clusters = 2
 
-if plotting:
-    n_clusters = 2
-    kmeans = KMeans(n_clusters=n_clusters,
-                    n_init='auto',
-                    random_state=1)
-    features = ['ones', 'wind_speed [m/s]', 'temperature [C]', 'pressure [hPa]', 'past_prod']
-    # features = ['ones', 'wind_speed [m/s]']
-    cluster_data = data[features]
+kmeans = KMeans(n_clusters=n_clusters,
+                n_init='auto',
+                random_state=1)
+kmeans.fit(X_train)
+center_locations = kmeans.cluster_centers_
+train_labels = kmeans.labels_
+test_labels = kmeans.predict(X_test)
+# Adding predicted labels to X_train
+X_train_cluster = np.append(X_train, np.reshape(train_labels, (len(train_labels), 1)), axis=1)
+# Adding temporary index labels to merge sets later
+indexes = np.reshape(range(len(X_test)),(len(X_test), 1))
+X_test_cluster = np.append(X_test, indexes, axis=1)
+# Adding predicted labels to X_test, y_train and y_test
+X_test_cluster = np.append(X_test_cluster, np.reshape(test_labels, (len(test_labels), 1)), axis=1)
+y_train_cluster = np.vstack((y_train, train_labels)).T
+y_test_cluster = np.vstack((y_test, test_labels)).T
 
-    kmeans.fit(cluster_data)
-    center_locations = kmeans.cluster_centers_
-    cluster_labels = kmeans.labels_
-    data['label'] = cluster_labels
+# Splitting by label
+X_test_sets = separate_labels(X_test_cluster, n_clusters)
+X_train_sets = separate_labels(X_train_cluster, n_clusters)
+y_test_sets = separate_labels(y_test_cluster, n_clusters)
+y_train_sets = separate_labels(y_train_cluster, n_clusters)
 
-    sets = []
-    for i in range(n_clusters):
-        sets.append(data[data['label'] == i])
-        plt.scatter(sets[i]['wind_speed [m/s]'], sets[i]['production'], s=1)
-    plt.show()
-else:
-    kmeans.fit(X_train)
-    center_locations = kmeans.cluster_centers_
-    cluster_labels = kmeans.labels_
-    test_labels = kmeans.predict(X_test)
-    X_test_cluster = X_test
-    # Temporarily adding y_labels to data to divide them by label
-    X_test_cluster = np.append(X_test_cluster, np.reshape(y_test, (len(y_test), 1)), axis=1).shape
-    # Adding test labels to X_test
-    X_test_cluster = np.append(X_test, np.reshape(test_labels, (len(test_labels), 1)), axis=1)
+# Removing and saving test indices
+indices_list = []
+for i in range(n_clusters):
+    indices_list.append(X_test_sets[i][:,-1])
+    X_test_sets[i] = np.delete(X_test_sets[i], -1,1)
 
-    X_sets = []
-    y_sets = []
-    for i in range(n_clusters):
-        # sets.append(data[data['label']==i])
-        # Picking sets based on label
-        mask = (X_test_cluster[:, -1] == i)
-        temp_set = X_test_cluster[mask, :]
-        # Removing label column again
-        temp_set = np.delete(temp_set, -1, 1)
-        X_sets.append(np.delete(temp_set, -2, 1))
+beta_cluster = []
+y_pred_cluster = []
+# Predicting, different models can be chosen for different clusters
+beta_cluster.append(cf_fit(X_train_sets[0],y_train_sets[0]))
+y_pred_cluster.append(cf_predict(beta_cluster[0], X_test_sets[0]))
+
+beta_cluster.append(cf_fit(X_train_sets[1],y_train_sets[1]))
+y_pred_cluster.append(cf_predict(beta_cluster[1], X_test_sets[1]))
+
+if n_clusters>2:
+    beta_cluster.append(cf_fit(X_train_sets[2],y_train_sets[2]))
+    y_pred_cluster.append(cf_predict(beta_cluster[2], X_test_sets[2]))
+
+
+# Merging datapoints and sorting them to original order
+for i in range(n_clusters):
+    y_pred_cluster[i] = np.vstack((y_pred_cluster[i][:,0],indices_list[i])).T
+y_pred_cluster_sort = np.concatenate((y_pred_cluster), axis=0)
+y_pred_cluster_sort = y_pred_cluster_sort[y_pred_cluster_sort[:, -1].argsort()]
+y_pred_cluster_sort = np.delete(y_pred_cluster_sort, -1,1)
+
+# Calculating MSE
+mse_cluster = mean_squared_error(y_test, y_pred_cluster_sort)
+
+
+for i in range(n_clusters):
+    plt.scatter(X_train_sets[i][:,1], y_train_sets[i], s=1)
+
+# Done in separate loop to ensure that predicted values are on top
+for i in range(n_clusters):
+    plt.scatter(X_test_sets[i][:,1],y_pred_cluster[i][:,0],s=1)
+    
+plt.show()
+        
+        
+    
+    
 
 
 

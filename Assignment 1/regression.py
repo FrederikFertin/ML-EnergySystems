@@ -213,6 +213,17 @@ def l2_weighted_fit(X, y, W, lambda_):
     XT = np.transpose(X)
     return np.linalg.inv(XT @ W @ X + lambda_) @ XT @ W @ y
 
+#%% Step 7
+
+def separate_labels(set, n_clusters):
+    split_set = []
+    for i in range(n_clusters):
+        mask = (set[:, -1] == i)
+        temp_set = set[mask, :]
+        temp_set = np.delete(temp_set, -1, 1)
+        split_set.append(temp_set)
+    return split_set
+
 
 #%% Main
 if __name__ == "__main__":
