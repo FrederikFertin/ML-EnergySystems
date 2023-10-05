@@ -1,10 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Oct  1 16:50:53 2023
-
-@author: Asmus
-"""
-
 import pandas as pd
 import os
 from datetime import datetime

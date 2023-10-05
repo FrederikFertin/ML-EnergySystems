@@ -46,6 +46,11 @@ def stochastic_gradient_descent(X, y, N, lambda_):
 #%% Data set
 split = 0.4
 
+# Splitting data into half train half test. Splitting test into half test half validation
+# We should discuss which splits we use again
+training_test_split = 0.5
+test_val_split = 0.5
+
 data, mu_data, std_data = prepData()
 y = np.array(data['production'])
 
@@ -133,29 +138,29 @@ print('Training mse: ', mse_train_CF)
 print("Test mse: ", mse_test_CF)
 '''
 
-plotting = True
+plotting = False
 if plotting:    
     feat = [['ones', 'wind_speed [m/s]']]
     sizes = [len(data)]
 
 
-sel_features, mse_list = feature_selection_linear(data)
+sel_features, mse_list = feature_selection_linear(data, training_test_split=training_test_split
+                                                  , test_val_split=test_val_split)
 
 # Predicting using the chosen features
 y = np.array(data['production'])
 X = np.array(data[sel_features])
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.5, shuffle=False)
-X_val, X_test, y_val, y_test = train_test_split(X_val, y_val, test_size=0.5, shuffle=False)
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=training_test_split, shuffle=False)
+X_val, X_test, y_val, y_test = train_test_split(X_val, y_val, test_size=test_val_split, shuffle=False)
 
-beta = closed_form_fit(X_train, y_train)
-y_pred = closed_form_predict(beta, X_val)
-mse = mean_squared_error(y_val, y_pred)
+beta = cf_fit(X_train, y_train)
+y_pred = cf_predict(beta, X_test)
 
 #print(mse_list)
 # Last model is the one additional error metrics are calculated on
-MSE = mean_squared_error(y_val, y_pred)
-R2 = r2_score(y_val, y_pred)
-MAE = mean_absolute_error(y_val, y_pred)
+MSE = mean_squared_error(y_test, y_pred)
+R2 = r2_score(y_test, y_pred)
+MAE = mean_absolute_error(y_test, y_pred)
 
 # Plotting
 if plotting:
@@ -166,7 +171,8 @@ if plotting:
     plt.show
 
 #%% Chosen features for the extensions
-X = np.array(data[['ones', 'wind_speed [m/s]']])
+X = np.array(data[sel_features])
+#X = np.array(data[['ones', 'wind_speed [m/s]']])
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=split, shuffle=False)
 
