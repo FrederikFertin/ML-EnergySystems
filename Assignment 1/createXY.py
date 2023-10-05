@@ -54,7 +54,7 @@ def prepData():
     data = pd.read_csv(temp_dir)
     data.set_index('HourUTC', inplace=True)
 
-    # %% Step 2: Creating the training and test datasets
+    #Step 2: Creating the training and test datasets
     power_prod_prev_36 = np.array(np.append(df['Actual'].values[0:36], df['Actual'].values[0:len(df.Actual) - 36]),
                                   dtype=object)
     wind_cubed = np.array((data['wind_speed [m/s]'] ** 3).values)
@@ -64,7 +64,7 @@ def prepData():
     data['production'] = df['Actual']
     data['past_prod'] = data['production'].shift(periods = 24, fill_value=0)
 
-    # %% Standardization
+    #Standardization
     attributeNames = np.asarray(data.columns)
     # Not standardizing production
     attributeNames = np.delete(attributeNames,[6,7])
