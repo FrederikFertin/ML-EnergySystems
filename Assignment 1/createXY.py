@@ -33,7 +33,7 @@ def prepData():
     ### Sort out DST issues with duplicate values and missing observation (2022-01-01 00:00)
     df1Jan = np.mean([df.loc['2022-01-01 01:00']['Actual'], df.loc['2021-12-31 23:00']['Actual']])
     line = pd.DataFrame({"Actual": df1Jan}, index=[datetime.strptime('2022-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')])
-    df = df.append(line, ignore_index=False)
+    df = pd.concat([df,line], ignore_index=False)
     df = df.sort_index()
     df = df.iloc[0:len(df['Actual']) - 1, :]
     """ Power production is already normalized """
