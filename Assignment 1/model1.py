@@ -53,7 +53,35 @@ def closed_form_predict(beta,X):
 
 
 #%% Data set
-data = prepData()
+split = 0.4
+
+# Splitting data into half train half test. Splitting test into half test half validation
+# We should discuss which splits we use again
+training_test_split = 0.5
+test_val_split = 0.5
+
+data, mu_data, std_data = prepData()
+y = np.array(data['production'])
+
+
+#%% Prepare price data for revenue calculations
+cwd = os.getcwd()
+
+filename = os.path.join(cwd, 'Prices.csv')
+prices = pd.read_csv(filename)
+spot = np.array(prices['Spot'])
+
+up = np.array(prices['Up'])
+down = np.array(prices['Down'])
+
+_, spot_test, _, up_test = train_test_split(spot, up, test_size=split, shuffle=False)
+
+filename = os.path.join(cwd, 'wind power clean.csv')
+power = pd.read_csv(filename)
+power = np.array(power['Actual'])
+
+_, down_test, _, power_test = train_test_split(down, power, test_size=split, shuffle=False)
+
 
 '''
 #%% Dummy data sets 
@@ -75,7 +103,7 @@ print("Test mse: ", mse_test_SGD)
 """
 # Choosing only 100 samples and windspeed
 X = np.array(data[['ones','wind_speed [m/s]']])
-y = np.array(data['production'])
+
 X_slice = X[0:100]
 y_slice = y[0:100]
 X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
@@ -132,16 +160,8 @@ else:
             ['ones', 'wind_speed [m/s]','temperature [C]','pressure [hPa]','past_prod']]
 mse_list = []
 
-# Looping through features and sample sizes. Output will be a list with the shape:
-    # Features[0], size[0], ..., size[-1], features[1] and so on
-y = np.array(data['production'])
-for features in feat:
-    mse_list.append(features)
-    for size in sizes:
-        X = np.array(data[features])
-        # X = np.matrix([x1,data[cols[0]],data[cols[1]],data[cols[2]]]).T
-        X_slice = X[0:size]
-        y_slice = y[0:size]
+sel_features, mse_list = feature_selection_linear(data, training_test_split=training_test_split
+                                                  , test_val_split=test_val_split)
 
         X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
 
@@ -373,8 +393,7 @@ lambda_ = lambda_[min_ix]
 X_u, y_u = weighted_regression_fit(X_train, y_train, lambda_ = lambda_)
 y_pred = weighted_regression_predict(X_test, X_u, y_u)
 mse_lw = mean_squared_error(y_test, y_pred)
-print("Best ridge regularized locally weighted linear regression:")
-print("lambda: ", lambda_)
+print("Best regularized locally weighted linear regression:")
 print("Test mse: ", mse_lw)
 print()
 

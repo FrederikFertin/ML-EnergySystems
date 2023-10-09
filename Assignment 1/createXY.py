@@ -1,28 +1,16 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Oct  1 16:50:53 2023
-
-@author: Asmus
-"""
-
 import pandas as pd
 import os
 from datetime import datetime
 import numpy as np
+
+# Scikit-learn
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 
+# Unused
 # from model1 import closed_form_fit,closed_form_predict
 # from sklearn.linear_model import LinearRegression
 # from numpy.linalg import inv
-
-def closed_form_fit(X, y):
-    XT = np.transpose(X)
-    return np.linalg.inv(XT @ X) @ XT @ y
-
-
-def closed_form_predict(beta, X):
-    return X @ beta
 
 
 def prepData():
@@ -75,9 +63,9 @@ def prepData():
         dfs[attributeNames[i]] = (dfs[attributeNames[i]] - mu_dfs[i]) / std_dfs[i]
 
     dfs['ones'] = 1
-    data['production'] = df['Actual'].values
-    
-    return dfs
+
+    return dfs, mu_dfs, std_dfs
+
 
 def readRegPrice(file):
     cwd = os.getcwd()
@@ -100,7 +88,7 @@ def getPrices():
     df_down22 = readRegPrice('Down-regulation price_2022.csv')
     up = np.append(df_up21.values,df_up22.values)
     down = np.append(df_down21.values,df_down22.values)
-    
+
     #Day ahead prices:
     cwd = os.getcwd()
     f_ahead = os.path.join(cwd,'Day-ahead price.xlsx')
@@ -109,23 +97,27 @@ def getPrices():
     df_ = df_.loc[df_['HourUTC'] >= '2021']
     df_ = df_.loc[df_['HourUTC'] < '2023']
     df_ = df_[df_.columns[-1]]
-    
+
     df = pd.DataFrame()
     df['Spot'] = df_
     df['Up'] = up
     df['Down'] = down
-    
+
     return df
+
 
 def loadBids():
     cwd = os.getcwd()
     """ Load actual wind power from cwd """
     temp_dir = os.path.join(cwd, 'optimal bids.csv')
     df = pd.read_csv(temp_dir)
-    
+
     return np.array(df['Opt-Bid'].values)
 
+
 if __name__ == "__main__":
+    from regression import cf_fit, cf_predict
+
     data = prepData()
     
     # %% Step 3: First sample data
@@ -146,8 +138,8 @@ if __name__ == "__main__":
             X_train, X_test, y_train, y_test = train_test_split(X_slice, y_slice, test_size=0.4, shuffle=False)
     
             # Closed form linear regression:
-            beta = closed_form_fit(X_train, y_train)
-            y_pred = closed_form_predict(beta, X_test)
+            beta = cf_fit(X_train, y_train)
+            y_pred = cf_predict(beta, X_test)
             mse = mean_squared_error(y_test, y_pred)  # 0.028742528161411984
             mse_list.append(mse)
     print(mse_list)
