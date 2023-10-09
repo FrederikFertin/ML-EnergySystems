@@ -49,21 +49,23 @@ def prepData():
     data['wind_cubed'] = wind_cubed
     data['wind_energy'] = windXpressure
     data['production'] = df['Actual'].values
-    data['past_prod'] = data['production'].shift(periods = 24, fill_value=np.mean(data['production'].iloc[0:24]))
+    data['past_prod'] = data['production'].shift(periods = 36, fill_value=np.mean(data['production'].iloc[0:36]))
 
     # %% Standardization
     attributeNames = np.asarray(data.columns)
     # Not standardizing production
     attributeNames = np.delete(attributeNames,[6,7])
     dfs = data.copy()
-    mu_dfs = np.mean(dfs[attributeNames])
-    std_dfs = np.std(dfs[attributeNames])
+    # Standardizing solely based on the training set:
+    train_size = 0.75
+    mu_dfs = np.mean(dfs[attributeNames].iloc[0:int(len(dfs.index)*train_size),:],axis=0)
+    std_dfs = np.std(dfs[attributeNames].iloc[0:int(len(dfs.index)*train_size),:],axis=0)
 
     for i in range(0, len(attributeNames)):
         dfs[attributeNames[i]] = (dfs[attributeNames[i]] - mu_dfs[i]) / std_dfs[i]
-
+        
     dfs['ones'] = 1
-
+    
     return dfs, mu_dfs, std_dfs
 
 
