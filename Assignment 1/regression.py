@@ -5,18 +5,20 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 
 #%% Step 2
-def feature_selection_linear(data, training_test_split,test_val_split):
+def feature_selection_linear(data, y, training_test_split,test_val_split):
     feature_list = data.columns.values
-    y = np.array(data['production'])
     feature_list = np.delete(feature_list, np.where(feature_list == 'production'))
     X = np.array(data[feature_list])
     # Splitting into train, test and validation sets
     X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=training_test_split, shuffle=False)
     X_val, X_test, y_val, y_test = train_test_split(X_val, y_val, test_size=test_val_split, shuffle=False)
 
-    # Creating a list of the indeces of features added to the model
+    # Creating a list of the indices of features added to the model
     added_features = [np.where(feature_list == 'ones')[0][0]]
     mse_list = []
+    # Counter for forward selection iteration:
+    iteration = 0
+    mse_dict = {}
     while True:
         beta = cf_fit(X_train[:, added_features], y_train)
         y_pred = cf_predict(beta, X_val[:, added_features])
@@ -30,21 +32,24 @@ def feature_selection_linear(data, training_test_split,test_val_split):
                 loop_mse_list.append(0)
                 continue
             testing_features = added_features[:]
-            testing_features.append([i][0])
+            testing_features.append(i)
             beta = cf_fit(X_train[:, testing_features], y_train)
             y_pred = cf_predict(beta, X_val[:, testing_features])
             mse = mean_squared_error(y_val, y_pred)
             loop_mse_list.append(mse - mse_list[-1])
+            mse_dict[str('Iter: ' + str(iteration) + ' - ' + str(feature_list[i]))] = mse
+            
         # Breaking the loop if all added features add nothing/make it worse
         if all(val >= 0 for val in loop_mse_list) or len(feature_list) == len(added_features):
             break
-
+        
         # Getting the value and index of the highest reduction
         # mse_list.append(min(loop_mse_list))
         best_feature = min(range(len(loop_mse_list)), key=loop_mse_list.__getitem__)
         added_features.append(best_feature)
+        iteration += 1
 
-    return feature_list[added_features], mse_list
+    return feature_list[added_features], mse_list, mse_dict
 
 #%% Step 3
 def gradient_descent(X, y, M, alpha):
