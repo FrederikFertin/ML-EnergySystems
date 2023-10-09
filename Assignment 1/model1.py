@@ -46,7 +46,7 @@ def stochastic_gradient_descent(X, y, N, lambda_):
 """
 
 #%% Data set
-split = 0.4
+split = 0.25
 
 # Splitting data into half train half test. Splitting test into half test half validation
 # We should discuss which splits we use again
