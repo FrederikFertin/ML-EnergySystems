@@ -3,6 +3,7 @@ import gurobipy as gb
 from gurobipy import GRB
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
+from sklearn import linear_model
 
 #%% Step 2
 def feature_selection_linear(data, y, training_test_split,test_val_split):
@@ -79,10 +80,9 @@ def cf_predict(beta, X):
 
 
 #%% Step 4.2
-def gaussian_kernel(x_t, x_u, sigma=0.5):
-    """ Finds the weight of a data point x_t given a fitting point x_u """
-    return  np.exp(-np.linalg.norm(x_t-x_u) / (2*sigma**2) )
-
+def gaussian_kernel(x_t,x_u,sigma=0.5):
+    # Finds the weight of a data point x_t given a fitting point x_u
+    return  np.exp(-np.linalg.norm(x_t-x_u, axis = 1) / (2*sigma**2) )
 
 def cf_weighted_fit(X, y, W):
     """ Closed form weighted fit """
@@ -117,8 +117,9 @@ def weighted_regression_fit(X_train, y_train, M = 10, lambda_ = 0, regularizatio
         W = np.zeros((N,N))
         
         # Find weights of all data points given fitting point i
-        for j in range(N):
-            W[j,j] = gaussian_kernel(X_train[j],X_u[i])
+        W_vector = gaussian_kernel(X_train,X_u[i])
+        
+        W = np.diagflat(W_vector)
         
         # Find parameters beta and y value for fitting point i
         if lambda_ > 0:
@@ -169,6 +170,42 @@ def weighted_regression_predict(X_test, X_u, y_u):
         y_pred[j] = alpha * y_u[min_ixs[0]] + (1-alpha) * y_u[min_ixs[1]]
     
     return y_pred
+
+def weighted_regression_predict2(X_train, y_train, X_test, lambda_ = 0, regu = ''):
+    # Number of training points
+    N = np.shape(X_train)[0]
+    
+    # Number of test points
+    M = np.shape(X_test)[0]
+    
+    # Initialize predictions 
+    y_pred = np.zeros(M)
+    
+    # Loop through test points 
+    for i in range(M):        
+        print('Test point ' + str(i+1) + '/' + str(M))
+        
+        W_vector = gaussian_kernel(X_train,X_test[i])
+        
+        W = np.diagflat(W_vector)
+            
+        # Find parameters beta and y value for test point i
+        if lambda_ <= 0:
+            beta = cf_weighted_fit(X_train, y_train, W)
+            y_pred[i] = cf_predict(beta,X_test[i])
+        elif regu == 'L1':
+            clf = linear_model.Lasso(alpha=lambda_)
+            clf.fit(X_train, y_train, sample_weight=W_vector)
+            y_pred[i] = clf.predict(X_test[i].reshape(1, -1))
+            # beta = l1_fit(X_train, y_train,lambda_, W=W)
+            # y_pred[i] = cf_predict(beta,X_test[i])
+        elif regu == 'L2':
+            clf = linear_model.Ridge(alpha=lambda_)
+            clf.fit(X_train, y_train, sample_weight=W_vector)
+            y_pred[i] = clf.predict(X_test[i].reshape(1, -1))
+            # beta = l2_weighted_fit(X_train, y_train, W, lambda_)
+            # y_pred[i] = cf_predict(beta,X_test[i])
+    return y_pred 
 
 
 #%% Step 5
