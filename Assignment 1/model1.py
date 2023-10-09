@@ -146,7 +146,7 @@ if plotting:
     sizes = [len(data)]
 
 
-sel_features, mse_list = feature_selection_linear(data, training_test_split=training_test_split
+sel_features, mse_list, mse_dict = feature_selection_linear(data, y, training_test_split=training_test_split
                                                   , test_val_split=test_val_split)
 
 # Predicting using the chosen features
@@ -317,7 +317,7 @@ print()
 n_clusters = 2
 
 kmeans = KMeans(n_clusters=n_clusters,
-                n_init='auto',
+                n_init=10,
                 random_state=1)
 kmeans.fit(X_train)
 center_locations = kmeans.cluster_centers_
