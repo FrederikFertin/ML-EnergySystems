@@ -1,6 +1,6 @@
 # General packages
 import numpy as np
-from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score, root_
 import matplotlib.pyplot as plt
 import os
 import pandas as pd
@@ -50,7 +50,6 @@ def stochastic_gradient_descent(X, y, N, lambda_):
 split = 0.25
 
 # Splitting data into half train half test. Splitting test into half test half validation
-# We should discuss which splits we use again
 training_test_split = 0.5
 test_val_split = 0.5
 
@@ -77,24 +76,8 @@ power = np.array(power['Actual'])
 _, down_test, _, power_test = train_test_split(down, power, test_size=split, shuffle=False)
 
 
-'''
-#%% Dummy data sets 
-X_train = np.array([[1,1],[1,2],[1,3]])
-X_test = np.array([[1,0.5]])
-y_train = [3,5,7]
-y_test = [2]
-'''
 
 #%% Step 3.1
-""" Stochastic Gradient Descent 
-N = 1000
-lambda_ = 1/100
-beta_SGD, mse_train_SGD, mse_test_SGD = stochastic_gradient_descent(X_train, y_train, N, lambda_)
-print("Stochastic gradient descent:")
-print("Model coefficients: ", beta_SGD[-1,:])
-print('Training mse: ', mse_train_SGD)
-print("Test mse: ", mse_test_SGD)
-"""
 # Choosing only 100 samples and windspeed
 X = np.array(data[['ones','wind_speed [m/s]']])
 
@@ -128,24 +111,7 @@ print('Training mse: ', mse_train_CF)
 print("Test mse: ", mse_test_CF)
 
 #%% Step 3.2-3
-
-'''
-beta_CF = cf_fit(X_train,y_train)
-y_pred_train_CF = cf_predict(beta_CF, X_train)
-mse_train_CF = mean_squared_error(y_train,y_pred_train_CF)
-y_pred_test_CF = cf_predict(beta_CF, X_test)
-mse_test_CF = mean_squared_error(y_test,y_pred_test_CF)
-print("Closed form:")
-print("Model coefficients: ", beta_CF)
-print('Training mse: ', mse_train_CF)
-print("Test mse: ", mse_test_CF)
-'''
-
 plotting = False
-if plotting:    
-    feat = [['ones', 'wind_speed [m/s]']]
-    sizes = [len(data)]
-
 
 sel_features, mse_list, mse_dict = feature_selection_linear(data, y, training_test_split=training_test_split
                                                   , test_val_split=test_val_split)
@@ -153,15 +119,15 @@ sel_features, mse_list, mse_dict = feature_selection_linear(data, y, training_te
 # Predicting using the chosen features
 y = np.array(data['production'])
 X = np.array(data[sel_features])
+#X = np.array(data[['ones','wind_speed [m/s]']])
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=training_test_split, shuffle=False)
 X_val, X_test, y_val, y_test = train_test_split(X_val, y_val, test_size=test_val_split, shuffle=False)
 
 beta = cf_fit(X_train, y_train)
 y_pred = cf_predict(beta, X_test)
 
-#print(mse_list)
-# Last model is the one additional error metrics are calculated on
 MSE = mean_squared_error(y_test, y_pred)
+RMSE = mean_squared_error(y_test, y_pred, squared=False)
 R2 = r2_score(y_test, y_pred)
 MAE = mean_absolute_error(y_test, y_pred)
 
@@ -664,17 +630,19 @@ y_pred_cluster_sort = np.concatenate((y_pred_cluster), axis=0)
 y_pred_cluster_sort = y_pred_cluster_sort[y_pred_cluster_sort[:, -1].argsort()]
 y_pred_cluster_sort = np.delete(y_pred_cluster_sort, -1,1)
 
-# Calculating MSE
-mse_cluster = mean_squared_error(y_test, y_pred_cluster_sort)
+# Calculating MAE
+mae_cluster = mean_absolute_error(y_test, y_pred_cluster_sort)
 
 
 for i in range(n_clusters):
-    plt.scatter(X_train_sets[i][:,1], y_train_sets[i], s=1)
+    plt.scatter(X_train_sets[i][:,1], y_train_sets[i], s=2)
+
 
 # Done in separate loop to ensure that predicted values are on top
 for i in range(n_clusters):
     plt.scatter(X_test_sets[i][:,1],y_pred_cluster[i][:,0],s=1)
-    
+plt.xlabel('Mean wind speed')
+plt.ylabel('Production')    
 plt.show()
         
         
