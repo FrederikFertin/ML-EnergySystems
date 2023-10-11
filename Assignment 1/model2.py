@@ -19,10 +19,8 @@ from regression import *
 
 #%% Data set
 split = 0.25
-# Splitting data into half train half test. Splitting test into half test half validation
-# We should discuss which splits we use again
-training_test_split = 0.5
-test_val_split = 0.5
+
+train_val_split = 0.33
 
 data, mu_data, std_data = prepData()
 y = loadBids()
@@ -85,8 +83,8 @@ bidding strategy"""
 data['overbid'] = diff1
 #data['underbid'] = diff2
 #data['spot'] = spot
-sel_features, mse_list, mse_dict = feature_selection_linear(data, y, training_test_split=training_test_split
-                                                  , test_val_split=test_val_split)
+sel_features, mae_list, mae_dict = feature_selection_linear(data, y, training_test_split=split
+                                                  , training_val_split=train_val_split)
 
 
 

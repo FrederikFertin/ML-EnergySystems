@@ -49,9 +49,7 @@ def stochastic_gradient_descent(X, y, N, lambda_):
 #%% Data set
 split = 0.25
 
-# Splitting data into half train half test. Splitting test into half test half validation
-training_test_split = 0.5
-test_val_split = 0.5
+train_val_split = 0.33
 
 data, mu_data, std_data = prepData()
 y = np.array(data['production'])
@@ -117,15 +115,15 @@ if plotting:
     sizes = [len(data)]
 
 
-sel_features, mae_list, mae_dict = feature_selection_linear(data, y, training_test_split=training_test_split
-                                                  , test_val_split=test_val_split)
+sel_features, mae_list, mae_dict = feature_selection_linear(data, y, training_test_split=split
+                                                  , training_val_split=train_val_split)
 
 # Predicting using the chosen features
 y = np.array(data['production'])
 X = np.array(data[sel_features])
 #X = np.array(data[['ones','wind_speed [m/s]']])
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=training_test_split, shuffle=False)
-X_val, X_test, y_val, y_test = train_test_split(X_val, y_val, test_size=test_val_split, shuffle=False)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=split, shuffle=False)
+X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=train_val_split, shuffle=False)
 
 beta = cf_fit(X_train, y_train)
 y_pred = cf_predict(beta, X_test)
@@ -589,7 +587,11 @@ print()
 
 
 # %% Step 7.1
-n_clusters = 2
+beta = cf_fit(X_train, y_train)
+y_pred = cf_predict(beta, X_test)
+MAE = mean_absolute_error(y_test, y_pred)
+
+n_clusters = 3
 
 kmeans = KMeans(n_clusters=n_clusters,
                 n_init=10,
@@ -646,14 +648,15 @@ mae_cluster = mean_absolute_error(y_test, y_pred_cluster_sort)
 
 
 for i in range(n_clusters):
-    plt.scatter(X_train_sets[i][:,1], y_train_sets[i], s=2)
+    plt.scatter(X_train_sets[i][:,1], y_train_sets[i], s=1, label = f'cluster{i} data')
 
 
 # Done in separate loop to ensure that predicted values are on top
 for i in range(n_clusters):
-    plt.scatter(X_test_sets[i][:,1],y_pred_cluster[i][:,0],s=1)
+    plt.scatter(X_test_sets[i][:,1],y_pred_cluster[i][:,0],s=1, label = f'cluster{i} preds')
 plt.xlabel('Mean wind speed')
 plt.ylabel('Production')
+plt.legend(markerscale = 4)
 plt.show()
         
         
