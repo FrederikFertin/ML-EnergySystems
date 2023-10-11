@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Scikit-learn
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import train_test_split
 from sklearn.cluster import KMeans
 # from sklearn.preprocessing import PolynomialFeatures
@@ -46,25 +46,25 @@ _, down_test, _,  power_test = train_test_split(down, power, test_size=split, sh
 
 
 #%% Feature addition
-
+M = 0.001
 # Prices:
 diff1 = spot-up
 diff2 = down-spot
 
-# When the up-regulation price is greater than the day ahead price, 
+# When the up-regulation price is greater than the day ahead price,
 # it is optimal to overbid as much as possible.
-overbid = diff1 > 0
+overbid = diff1 > 0+M
 
 # When the down-regulation price is greater than the day ahead price,
 # it is optimal to underbid as much as possible.
-underbid = diff2 > 0
+underbid = diff2 > 0+M
 
 # Number of hours where both overbidding and underbidding is
 # better than actual power bidding (0):
-unbalanced = underbid * overbid
+unbalanced = underbid == overbid
 # Number of hours where we bid nothing:
 underbids = sum(underbid)
-# Number of hours where we bid everything: 
+# Number of hours where we bid everything:
 overbids = sum(overbid)
 # Number of hours where we either bid everything or nothing:
 extreme_bid = sum(underbid) + sum(overbid) 
@@ -79,11 +79,15 @@ be very risky to make extreme bids as the up- and down-regulation
 prices can be very large. This alone could decentivize this 
 bidding strategy"""
 
-#%%
-data['overbid'] = diff1
-#data['underbid'] = diff2
-#data['spot'] = spot
-sel_features, mae_list, mae_dict = feature_selection_linear(data, y, training_test_split=split
+diff1 = (diff1 - np.mean(diff1[0:int(len(diff1)*(1-split))]))/np.std(diff1[0:int(len(diff1)*(1-split))])
+diff2 = (diff2 - np.mean(diff2[0:int(len(diff1)*(1-split))]))/np.std(diff2[0:int(len(diff1)*(1-split))])
+spot_z = (spot - np.mean(spot[0:int(len(diff1)*(1-split))]))/np.std(spot[0:int(len(diff1)*(1-split))])
+
+#%% Feature selecti0on
+data['low_up'] = diff1
+data['high_down'] = diff2
+data['spot'] = spot_z
+sel_features, mse_list, mse_dict = feature_selection_linear(data, y, training_test_split=split
                                                   , training_val_split=train_val_split)
 
 
@@ -98,27 +102,82 @@ X = np.array(data[sel_features])
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=split, shuffle=False)
 
-#%% Step 4.1
-X_poly_train = np.transpose(np.array([X_train[:,0],X_train[:,1],X_train[:,1]**2])) #,X_train[:,1]**3]))
-X_poly_test = np.transpose(np.array([X_test[:,0],X_test[:,1],X_test[:,1]**2])) #,X_test[:,1]**3]))
+#%% Linear regression model
+beta = cf_fit(X_train, y_train)
+y_pred = cf_predict(beta, X_test)
+y_pred_train = cf_predict(beta, X_train)
+mse_train_lr = mean_absolute_error(y_train, y_pred_train)
+mse_test_lr = mean_absolute_error(y_test, y_pred)
 
-beta = cf_fit(X_poly_train, y_train)
-y_pred_train = cf_predict(beta, X_poly_train)
-mse_train = mean_squared_error(y_train, y_pred_train)
-y_pred_test = cf_predict(beta, X_poly_test)
-mse_test = mean_squared_error(y_test, y_pred_test)
-print("Polynomial regression:")
+#%% Polynomial features
+data['w2'] = data['wind_speed [m/s]']**2
+data['w3'] = data['wind_speed [m/s]']**3
+data['t2'] = data['temperature [C]']**2
+data['p2'] = data['past_prod']**2
+argw1 = np.where(sel_features == 'wind_speed [m/s]')[0][0]
+sel_features = np.insert(sel_features,argw1+1,'w3')
+sel_features = np.insert(sel_features,argw1+1,'w2')
+argt1 = np.where(sel_features == 'temperature [C]')[0][0]
+sel_features = np.insert(sel_features,argt1+1,'t2')
+argp1 = np.where(sel_features == 'past_prod')[0][0]
+sel_features = np.insert(sel_features,argp1+1,'p2')
+
+X_poly = np.array(data[sel_features])
+X_train, X_test, y_train, y_test = train_test_split(X_poly, y, test_size=split, shuffle=False)
+
+#%% L1 feature selection
+# Number of cross-validation iterations
+K = 5
+
+# Values of the hyperparameter to be examined
+lambda_ = np.linspace(0.02,0.03,11)
+
+mse_lr = []
+
+# Loop through lambda values
+for l in lambda_:
+
+    # Redefine training sets
+    xx_train, yy_train = X_train, y_train
+
+    mse_lr.append(0)
+
+    # Loop through cross-validation steps
+    for k in range(K):
+        xx_train, xx_val, yy_train, yy_val = train_test_split(xx_train, yy_train, test_size=1/((K+1)-k), shuffle=False)
+
+        clf = linear_model.Lasso(alpha=l,fit_intercept=False)
+        clf.fit(xx_train,yy_train)
+
+        y_pred = clf.predict(xx_val)
+        mse_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
+
+print(mse_lr)
+print()
+
+# Find the lambda value which results in the lowest validation mse
+min_ix = np.argmin(np.asarray(mse_lr))
+lambda_ = lambda_[min_ix]
+
+# Train the best regularized model on entire training set and evaluate on
+# test set
+clf = linear_model.Lasso(alpha=lambda_,fit_intercept=False)
+clf.fit(X_train,y_train)
+beta = clf.coef_
+y_pred = clf.predict(X_test)
+y_pred_train = cf_predict(beta, X_train)
+mse_train_pr = mean_absolute_error(y_train, y_pred_train)
+mse_test_pr = mean_absolute_error(y_test,y_pred)
+print("Best L1 regularized linear regression:")
 print("Model coefficients: ", beta)
-print('Training mse: ', mse_train)
-print("Test mse: ", mse_test)
+print("Test mae: ", mse_lr)
+print()
 
 #%% Step 4.2
 # Gaussian kernel
-
-
 X_u, y_u = weighted_regression_fit(X_train, y_train)
 y_pred = weighted_regression_predict(X_test, X_u, y_u)
-mse = mean_squared_error(y_test, y_pred)
+mse = mean_absolute_error(y_test, y_pred)
 print("MSE using weighted linear regression: " + str(mse))
 
 #%% Step 5.1
@@ -130,9 +189,9 @@ print("MSE using weighted linear regression: " + str(mse))
 # Regularized linear regression
 beta_regu = l2_fit(X_train,y_train,0.5)
 y_pred_train_regu = cf_predict(beta_regu, X_train)
-mse_train_regu = mean_squared_error(y_train,y_pred_train_regu)
+mse_train_regu = mean_absolute_error(y_train,y_pred_train_regu)
 y_pred_test_regu = cf_predict(beta_regu, X_test)
-mse_test_regu = mean_squared_error(y_test,y_pred_test_regu)
+mse_test_regu = mean_absolute_error(y_test,y_pred_test_regu)
 print("Regularized linear regression:")
 print("Model coefficients: ", beta_regu)
 print('Training mse: ', mse_train_regu)
@@ -142,9 +201,9 @@ print()
 # Regularized locally weighted regression
 X_u_regu, y_u_regu = weighted_regression_fit(X_train, y_train, lambda_ = 0.5)
 y_pred_train_LW_regu = weighted_regression_predict(X_train, X_u, y_u)
-mse_train_LW_regu = mean_squared_error(y_train, y_pred_train_LW_regu)
+mse_train_LW_regu = mean_absolute_error(y_train, y_pred_train_LW_regu)
 y_pred_test_LW_regu = weighted_regression_predict(X_test, X_u, y_u)
-mse_test_LW_regu = mean_squared_error(y_test, y_pred_test_LW_regu)
+mse_test_LW_regu = mean_absolute_error(y_test, y_pred_test_LW_regu)
 print("Regularized locally weighted linear regression:")
 print('Training mse: ', mse_train_LW_regu)
 print("Test mse: ", mse_test_LW_regu)
@@ -173,7 +232,7 @@ for l in lambda_:
 
         beta = l2_fit(xx_train,yy_train,l)
         y_pred = cf_predict(beta, xx_val)
-        mse_lr[-1] += mean_squared_error(yy_val,y_pred) / K
+        mse_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
 
 print(mse_lr)
 print()
@@ -186,7 +245,7 @@ lambda_ = lambda_[min_ix]
 # test set
 beta = l2_fit(X_train,y_train,lambda_)
 y_pred = cf_predict(beta, X_test)
-mse_lr = mean_squared_error(y_test,y_pred)
+mse_lr = mean_absolute_error(y_test,y_pred)
 print("Best regularized linear regression:")
 print("Model coefficients: ", beta)
 print("Test mse: ", mse_lr)
@@ -216,7 +275,7 @@ for l in lambda_:
 
         X_u, y_u = weighted_regression_fit(xx_train, yy_train, lambda_ = l)
         y_pred = weighted_regression_predict(xx_val, X_u, y_u)
-        mse_lw[-1] += mean_squared_error(yy_val, y_pred) / K
+        mse_lw[-1] += mean_absolute_error(yy_val, y_pred) / K
 
 print(mse_lw)
 
@@ -228,13 +287,14 @@ lambda_ = lambda_[min_ix]
 # test set
 X_u, y_u = weighted_regression_fit(X_train, y_train, lambda_ = lambda_)
 y_pred = weighted_regression_predict(X_test, X_u, y_u)
-mse_lw = mean_squared_error(y_test, y_pred)
+mse_lw = mean_absolute_error(y_test, y_pred)
 print("Best regularized locally weighted linear regression:")
 print("Test mse: ", mse_lw)
 print()
 
 # %% Step 7.1
-n_clusters = 2
+data['o']
+n_clusters = 3
 
 kmeans = KMeans(n_clusters=n_clusters,
                 n_init=10,
@@ -287,7 +347,7 @@ y_pred_cluster_sort = y_pred_cluster_sort[y_pred_cluster_sort[:, -1].argsort()]
 y_pred_cluster_sort = np.delete(y_pred_cluster_sort, -1,1)
 
 # Calculating MSE
-mse_cluster = mean_squared_error(y_test, y_pred_cluster_sort)
+mse_cluster = mean_absolute_error(y_test, y_pred_cluster_sort)
 
 
 for i in range(n_clusters):
