@@ -147,7 +147,7 @@ if plotting:
     sizes = [len(data)]
 
 
-sel_features, mse_list, mse_dict = feature_selection_linear(data, y, training_test_split=training_test_split
+sel_features, mae_list, mae_dict = feature_selection_linear(data, y, training_test_split=training_test_split
                                                   , test_val_split=test_val_split)
 
 # Predicting using the chosen features
@@ -334,7 +334,7 @@ for l in lambda_:
         
         beta = l2_fit(xx_train,yy_train,l)
         y_pred = cf_predict(beta, xx_val)
-        mse_lr[-1] += mean_squared_error(yy_val,y_pred) / K
+        mae_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
 
 print(mse_lr)
 print()
@@ -346,8 +346,10 @@ lambda_ = lambda_[min_ix]
 # Train the best regularized model on entire training set and evaluate on 
 # test set
 beta = l2_fit(X_train,y_train,lambda_)
-y_pred = cf_predict(beta, X_test)
-mse_lr = mean_squared_error(y_test,y_pred)
+y_pred_train = cf_predict(beta, X_train)
+mae_lr_train = mean_absolute_error(y_train,y_pred_train)
+y_pred_test = cf_predict(beta, X_test)
+mae_lr_test = mean_absolute_error(y_test,y_pred_test)
 print("Best L2 regularized linear regression:")
 print("Model coefficients: ", beta)
 print("Test mse: ", mse_lr)
