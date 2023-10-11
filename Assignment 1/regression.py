@@ -1,7 +1,7 @@
 import numpy as np
 import gurobipy as gb
 from gurobipy import GRB
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 from sklearn import linear_model
 
@@ -23,7 +23,7 @@ def feature_selection_linear(data, y, training_test_split, test_val_split):
     while True:
         beta = cf_fit(X_train[:, added_features], y_train)
         y_pred = cf_predict(beta, X_val[:, added_features])
-        mse = mean_squared_error(y_val, y_pred)
+        mse = mean_absolute_error(y_val, y_pred)
         mse_list.append(mse)
         # Looping through every feature and comparing them
         loop_mse_list = []
@@ -36,7 +36,7 @@ def feature_selection_linear(data, y, training_test_split, test_val_split):
             testing_features.append(i)
             beta = cf_fit(X_train[:, testing_features], y_train)
             y_pred = cf_predict(beta, X_val[:, testing_features])
-            mse = mean_squared_error(y_val, y_pred)
+            mse = mean_absolute_error(y_val, y_pred)
             loop_mse_list.append(mse - mse_list[-1])
             mse_dict[str('Iter: ' + str(iteration) + ' - ' + str(feature_list[i]))] = mse
             
