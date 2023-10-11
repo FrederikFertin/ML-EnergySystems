@@ -22,8 +22,8 @@ from regression import *
 def stochastic_gradient_descent(X, y, N, lambda_):
     theta_old = np.zeros((1,len(X[0,:])))
     theta_new = np.zeros(len(X[0,:]))
-    mse_train = np.asarray([])
-    mse_test = np.asarray([])
+    mae_train = np.asarray([])
+    mae_test = np.asarray([])
     for k in range(N):
         i = np.random.randint(0,len(y)-1)
         alpha = 1/(lambda_*(k+1))
@@ -35,15 +35,15 @@ def stochastic_gradient_descent(X, y, N, lambda_):
         
         y_pred_train = np.dot(theta_old[-1,:],np.transpose(X_train))
         y_pred_train = np.sign(y_pred_train)
-        mse_train = np.append(mse_train, mean_squared_error(y_train,y_pred_train))
+        mae_train = np.append(mae_train, mean_absolute_error(y_train,y_pred_train))
         
         y_pred_test = np.dot(theta_old[-1,:],np.transpose(X_test))
         y_pred_test = np.sign(y_pred_test)
-        mse_test = np.append(mse_test, mean_squared_error(y_test,y_pred_test))
+        mae_test = np.append(mae_test, mean_absolute_error(y_test,y_pred_test))
         
         theta_old = np.append(theta_old,np.asarray([theta_new]),axis=0)
         
-    return theta_old, mse_train, mse_test
+    return theta_old, mae_train, mae_test
 """
 
 #%% Data set
@@ -89,11 +89,11 @@ y_test = [2]
 """ Stochastic Gradient Descent 
 N = 1000
 lambda_ = 1/100
-beta_SGD, mse_train_SGD, mse_test_SGD = stochastic_gradient_descent(X_train, y_train, N, lambda_)
+beta_SGD, mae_train_SGD, mae_test_SGD = stochastic_gradient_descent(X_train, y_train, N, lambda_)
 print("Stochastic gradient descent:")
 print("Model coefficients: ", beta_SGD[-1,:])
-print('Training mse: ', mse_train_SGD)
-print("Test mse: ", mse_test_SGD)
+print('Training mae: ', mae_train_SGD)
+print("Test mae: ", mae_test_SGD)
 """
 # Choosing only 100 samples and windspeed
 X = np.array(data[['ones','wind_speed [m/s]']])
@@ -108,37 +108,37 @@ M = 1000
 alpha = 1/1000
 beta_GD = gradient_descent(X_train, y_train, M, alpha)
 y_pred_train_GD = cf_predict(beta_GD, X_train)
-mse_train_GD = mean_squared_error(y_train,y_pred_train_GD)
+mae_train_GD = mean_absolute_error(y_train,y_pred_train_GD)
 y_pred_test_GD = cf_predict(beta_GD, X_test)
-mse_test_GD = mean_squared_error(y_test,y_pred_test_GD)
+mae_test_GD = mean_absolute_error(y_test,y_pred_test_GD)
 print("Gradient descent:")
 print("Model coefficients: ", beta_GD)
-print('Training mse: ', mse_train_GD)
-print("Test mse: ", mse_test_GD)
+print('Training mae: ', mae_train_GD)
+print("Test mae: ", mae_test_GD)
 
 # Solution using closed form (i.e., matrix formula)
 beta_CF = cf_fit(X_train,y_train)
 y_pred_train_CF = cf_predict(beta_CF, X_train)
-mse_train_CF = mean_squared_error(y_train,y_pred_train_CF)
+mae_train_CF = mean_absolute_error(y_train,y_pred_train_CF)
 y_pred_test_CF = cf_predict(beta_CF, X_test)
-mse_test_CF = mean_squared_error(y_test,y_pred_test_CF)
+mae_test_CF = mean_absolute_error(y_test,y_pred_test_CF)
 print("Closed form:")
 print("Model coefficients: ", beta_CF)
-print('Training mse: ', mse_train_CF)
-print("Test mse: ", mse_test_CF)
+print('Training mae: ', mae_train_CF)
+print("Test mae: ", mae_test_CF)
 
 #%% Step 3.2-3
 
 '''
 beta_CF = cf_fit(X_train,y_train)
 y_pred_train_CF = cf_predict(beta_CF, X_train)
-mse_train_CF = mean_squared_error(y_train,y_pred_train_CF)
+mae_train_CF = mean_absolute_error(y_train,y_pred_train_CF)
 y_pred_test_CF = cf_predict(beta_CF, X_test)
-mse_test_CF = mean_squared_error(y_test,y_pred_test_CF)
+mae_test_CF = mean_absolute_error(y_test,y_pred_test_CF)
 print("Closed form:")
 print("Model coefficients: ", beta_CF)
-print('Training mse: ', mse_train_CF)
-print("Test mse: ", mse_test_CF)
+print('Training mae: ', mae_train_CF)
+print("Test mae: ", mae_test_CF)
 '''
 
 plotting = False
@@ -159,7 +159,7 @@ X_val, X_test, y_val, y_test = train_test_split(X_val, y_val, test_size=test_val
 beta = cf_fit(X_train, y_train)
 y_pred = cf_predict(beta, X_test)
 
-#print(mse_list)
+#print(mae_list)
 # Last model is the one additional error metrics are calculated on
 MSE = mean_squared_error(y_test, y_pred)
 R2 = r2_score(y_test, y_pred)
@@ -185,27 +185,27 @@ X_poly_test = np.transpose(np.array([X_test[:,0],X_test[:,1],X_test[:,1]**2])) #
 
 beta = cf_fit(X_poly_train, y_train)
 y_pred_train = cf_predict(beta, X_poly_train)
-mse_train = mean_squared_error(y_train, y_pred_train)
+mae_train = mean_absolute_error(y_train, y_pred_train)
 y_pred_test = cf_predict(beta, X_poly_test)
-mse_test = mean_squared_error(y_test, y_pred_test)
+mae_test = mean_absolute_error(y_test, y_pred_test)
 print("Polynomial regression:")
 print("Model coefficients: ", beta)
-print('Training mse: ', mse_train)
-print("Test mse: ", mse_test)
+print('Training mae: ', mae_train)
+print("Test mae: ", mae_test)
 
 
 #%% Step 4.2 vol 1
 
 X_u, y_u = weighted_regression_fit(X_train, y_train)
 y_pred = weighted_regression_predict(X_test, X_u, y_u)
-mse = mean_squared_error(y_test, y_pred)
-print("MSE using weighted linear regression: " + str(mse))
+mae = mean_absolute_error(y_test, y_pred)
+print("mae using weighted linear regression: " + str(mae))
 
 #%% Step 4.2 vol 2
 
 y_pred = weighted_regression_predict2(X_train, y_train, X_test[:10])
-mse = mean_squared_error(y_test[:10], y_pred)
-print("MSE using weighted linear regression: " + str(mse))
+mae = mean_absolute_error(y_test[:10], y_pred)
+print("mae using weighted linear regression: " + str(mae))
 
 
 #%% Step 5.1
@@ -213,24 +213,24 @@ print("MSE using weighted linear regression: " + str(mse))
 # # Regularized linear regression
 # beta_regu = l2_fit(X_train,y_train,0.5)
 # y_pred_train_regu = cf_predict(beta_regu, X_train)
-# mse_train_regu = mean_squared_error(y_train,y_pred_train_regu)
+# mae_train_regu = mean_absolute_error(y_train,y_pred_train_regu)
 # y_pred_test_regu = cf_predict(beta_regu, X_test)
-# mse_test_regu = mean_squared_error(y_test,y_pred_test_regu)
+# mae_test_regu = mean_absolute_error(y_test,y_pred_test_regu)
 # print("Regularized linear regression:")
 # print("Model coefficients: ", beta_regu)
-# print('Training mse: ', mse_train_regu)
-# print("Test mse: ", mse_test_regu)
+# print('Training mae: ', mae_train_regu)
+# print("Test mae: ", mae_test_regu)
 # print()
 
 # # Regularized locally weighted regression
 # X_u_regu, y_u_regu = weighted_regression_fit(X_train, y_train, lambda_ = 0.5)
 # y_pred_train_LW_regu = weighted_regression_predict(X_train, X_u, y_u)
-# mse_train_LW_regu = mean_squared_error(y_train, y_pred_train_LW_regu)
+# mae_train_LW_regu = mean_absolute_error(y_train, y_pred_train_LW_regu)
 # y_pred_test_LW_regu = weighted_regression_predict(X_test, X_u, y_u)
-# mse_test_LW_regu = mean_squared_error(y_test, y_pred_test_LW_regu)
+# mae_test_LW_regu = mean_absolute_error(y_test, y_pred_test_LW_regu)
 # print("Regularized locally weighted linear regression:")
-# print('Training mse: ', mse_train_LW_regu)
-# print("Test mse: ", mse_test_LW_regu)
+# print('Training mae: ', mae_train_LW_regu)
+# print("Test mae: ", mae_test_LW_regu)
 # print()
 
 #%% Step 5.1-6 Linear Regression
@@ -238,25 +238,25 @@ print("MSE using weighted linear regression: " + str(mse))
 # L1 regularized linear regression
 beta_regu = l1_fit(X_train,y_train,0.5)
 y_pred_train_regu = cf_predict(beta_regu, X_train)
-mse_train_regu = mean_squared_error(y_train,y_pred_train_regu)
+mae_train_regu = mean_absolute_error(y_train,y_pred_train_regu)
 y_pred_test_regu = cf_predict(beta_regu, X_test)
-mse_test_regu = mean_squared_error(y_test,y_pred_test_regu)
+mae_test_regu = mean_absolute_error(y_test,y_pred_test_regu)
 print("L1 regularized linear regression:")
 print("Model coefficients: ", beta_regu)
-print('Training mse: ', mse_train_regu)
-print("Test mse: ", mse_test_regu)
+print('Training mae: ', mae_train_regu)
+print("Test mae: ", mae_test_regu)
 print()
 
 # L2 regularized linear regression
 beta_regu = l2_fit(X_train,y_train,0.5)
 y_pred_train_regu = cf_predict(beta_regu, X_train)
-mse_train_regu = mean_squared_error(y_train,y_pred_train_regu)
+mae_train_regu = mean_absolute_error(y_train,y_pred_train_regu)
 y_pred_test_regu = cf_predict(beta_regu, X_test)
-mse_test_regu = mean_squared_error(y_test,y_pred_test_regu)
+mae_test_regu = mean_absolute_error(y_test,y_pred_test_regu)
 print("L2 regularized linear regression:")
 print("Model coefficients: ", beta_regu)
-print('Training mse: ', mse_train_regu)
-print("Test mse: ", mse_test_regu)
+print('Training mae: ', mae_train_regu)
+print("Test mae: ", mae_test_regu)
 print()
 
 ########## Hyperparameter selection through cross-validation ###########
@@ -269,7 +269,7 @@ K = 5
 # Values of the hyperparameter to be examined
 lambda_ = np.linspace(0.005,0.006,10)
 
-mse_lr = []
+mae_lr = []
 
 # Loop through lambda values 
 for l in lambda_:
@@ -277,7 +277,7 @@ for l in lambda_:
     # Redefine training sets 
     xx_train, yy_train = X_train, y_train
     
-    mse_lr.append(0)
+    mae_lr.append(0)
     
     # Loop through cross-validation steps 
     for k in range(K):
@@ -287,13 +287,13 @@ for l in lambda_:
         clf.fit(xx_train,yy_train)
         
         y_pred = clf.predict(xx_val)
-        mse_lr[-1] += mean_squared_error(yy_val,y_pred) / K
+        mae_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
 
-print(mse_lr)
+print(mae_lr)
 print()
 
-# Find the lambda value which results in the lowest validation mse  
-min_ix = np.argmin(np.asarray(mse_lr))
+# Find the lambda value which results in the lowest validation mae  
+min_ix = np.argmin(np.asarray(mae_lr))
 lambda_ = lambda_[min_ix]
 
 # Train the best regularized model on entire training set and evaluate on 
@@ -303,10 +303,10 @@ clf.fit(X_train,y_train)
 beta = clf.intercept_
 beta = np.append(beta, clf.coef_)
 y_pred = clf.predict(X_test)
-mse_lr = mean_squared_error(y_test,y_pred)
+mae_lr = mean_absolute_error(y_test,y_pred)
 print("Best L1 regularized linear regression:")
 print("Model coefficients: ", beta)
-print("Test mse: ", mse_lr)
+print("Test mae: ", mae_lr)
 print()
 
 
@@ -318,7 +318,7 @@ K = 5
 # Values of the hyperparameter to be examined
 lambda_ = np.linspace(100,300,10)
 
-mse_lr = []
+mae_lr = []
 
 # Loop through lambda values 
 for l in lambda_:
@@ -326,7 +326,7 @@ for l in lambda_:
     # Redefine training sets 
     xx_train, yy_train = X_train, y_train
     
-    mse_lr.append(0)
+    mae_lr.append(0)
     
     # Loop through cross-validation steps 
     for k in range(K):
@@ -336,11 +336,11 @@ for l in lambda_:
         y_pred = cf_predict(beta, xx_val)
         mae_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
 
-print(mse_lr)
+print(mae_lr)
 print()
 
-# Find the lambda value which results in the lowest validation mse  
-min_ix = np.argmin(np.asarray(mse_lr))
+# Find the lambda value which results in the lowest validation mae  
+min_ix = np.argmin(np.asarray(mae_lr))
 lambda_ = lambda_[min_ix]
 
 # Train the best regularized model on entire training set and evaluate on 
@@ -352,7 +352,7 @@ y_pred_test = cf_predict(beta, X_test)
 mae_lr_test = mean_absolute_error(y_test,y_pred_test)
 print("Best L2 regularized linear regression:")
 print("Model coefficients: ", beta)
-print("Test mse: ", mse_lr)
+print("Test mae: ", mae_lr)
 print()
 
 bid, _ = runOpt(y_pred, spot_test, up_test, down_test)
@@ -363,25 +363,25 @@ revenue = revenue_calc(bid, y_test, spot_test, up_test, down_test)
 # L1 regularized polynomial regression
 beta_regu = l1_fit(X_poly_train,y_train,0.5)
 y_pred_train_regu = cf_predict(beta_regu, X_poly_train)
-mse_train_regu = mean_squared_error(y_train,y_pred_train_regu)
+mae_train_regu = mean_absolute_error(y_train,y_pred_train_regu)
 y_pred_test_regu = cf_predict(beta_regu, X_poly_test)
-mse_test_regu = mean_squared_error(y_test,y_pred_test_regu)
+mae_test_regu = mean_absolute_error(y_test,y_pred_test_regu)
 print("L1 regularized polynomial regression:")
 print("Model coefficients: ", beta_regu)
-print('Training mse: ', mse_train_regu)
-print("Test mse: ", mse_test_regu)
+print('Training mae: ', mae_train_regu)
+print("Test mae: ", mae_test_regu)
 print()
 
 # L2 regularized polynomial regression
 beta_regu = l2_fit(X_poly_train,y_train,0.5)
 y_pred_train_regu = cf_predict(beta_regu, X_poly_train)
-mse_train_regu = mean_squared_error(y_train,y_pred_train_regu)
+mae_train_regu = mean_absolute_error(y_train,y_pred_train_regu)
 y_pred_test_regu = cf_predict(beta_regu, X_poly_test)
-mse_test_regu = mean_squared_error(y_test,y_pred_test_regu)
+mae_test_regu = mean_absolute_error(y_test,y_pred_test_regu)
 print("L2 regularized polynomial regression:")
 print("Model coefficients: ", beta_regu)
-print('Training mse: ', mse_train_regu)
-print("Test mse: ", mse_test_regu)
+print('Training mae: ', mae_train_regu)
+print("Test mae: ", mae_test_regu)
 print()
 
 ########## Hyperparameter selection through cross-validation ###########
@@ -394,7 +394,7 @@ K = 5
 # Values of the hyperparameter to be examined
 lambda_ = np.linspace(0.005,0.006,10)
 
-mse_lr = []
+mae_lr = []
 
 # Loop through lambda values 
 for l in lambda_:
@@ -402,7 +402,7 @@ for l in lambda_:
     # Redefine training sets 
     xx_train, yy_train = X_poly_train, y_train
     
-    mse_lr.append(0)
+    mae_lr.append(0)
     
     # Loop through cross-validation steps 
     for k in range(K):
@@ -412,13 +412,13 @@ for l in lambda_:
         clf.fit(xx_train,yy_train)
         
         y_pred = clf.predict(xx_val)
-        mse_lr[-1] += mean_squared_error(yy_val,y_pred) / K
+        mae_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
 
-print(mse_lr)
+print(mae_lr)
 print()
 
-# Find the lambda value which results in the lowest validation mse  
-min_ix = np.argmin(np.asarray(mse_lr))
+# Find the lambda value which results in the lowest validation mae  
+min_ix = np.argmin(np.asarray(mae_lr))
 lambda_ = lambda_[min_ix]
 
 # Train the best regularized model on entire training set and evaluate on 
@@ -428,10 +428,10 @@ clf.fit(X_poly_train,y_train)
 beta = clf.intercept_
 beta = np.append(beta, clf.coef_)
 y_pred = clf.predict(X_poly_test)
-mse_lr = mean_squared_error(y_test,y_pred)
+mae_lr = mean_absolute_error(y_test,y_pred)
 print("Best L1 regularized polynomial regression:")
 print("Model coefficients: ", beta)
-print("Test mse: ", mse_lr)
+print("Test mae: ", mae_lr)
 print()
 
 
@@ -443,7 +443,7 @@ K = 5
 # Values of the hyperparameter to be examined
 lambda_ = np.linspace(100,300,10)
 
-mse_lr = []
+mae_lr = []
 
 # Loop through lambda values 
 for l in lambda_:
@@ -451,7 +451,7 @@ for l in lambda_:
     # Redefine training sets 
     xx_train, yy_train = X_poly_train, y_train
     
-    mse_lr.append(0)
+    mae_lr.append(0)
     
     # Loop through cross-validation steps 
     for k in range(K):
@@ -459,23 +459,23 @@ for l in lambda_:
         
         beta = l2_fit(xx_train,yy_train,l)
         y_pred = cf_predict(beta, xx_val)
-        mse_lr[-1] += mean_squared_error(yy_val,y_pred) / K
+        mae_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
 
-print(mse_lr)
+print(mae_lr)
 print()
 
-# Find the lambda value which results in the lowest validation mse  
-min_ix = np.argmin(np.asarray(mse_lr))
+# Find the lambda value which results in the lowest validation mae  
+min_ix = np.argmin(np.asarray(mae_lr))
 lambda_ = lambda_[min_ix]
 
 # Train the best regularized model on entire training set and evaluate on 
 # test set
 beta = l2_fit(X_poly_train,y_train,lambda_)
 y_pred = cf_predict(beta, X_poly_test)
-mse_lr = mean_squared_error(y_test,y_pred)
+mae_lr = mean_absolute_error(y_test,y_pred)
 print("Best L2 regularized polynomial regression:")
 print("Model coefficients: ", beta)
-print("Test mse: ", mse_lr)
+print("Test mae: ", mae_lr)
 print()
 
 bid, _ = runOpt(y_pred, spot_test, up_test, down_test)
@@ -485,35 +485,35 @@ revenue = revenue_calc(bid, y_test, spot_test, up_test, down_test)
 
 # L1 Regularized locally weighted regression 
 y_pred_train_LW_regu = weighted_regression_predict2(X_train, y_train, X_train, lambda_ = 0.5, regu = 'L1')
-mse_train_LW_regu = mean_squared_error(y_train, y_pred_train_LW_regu)
+mae_train_LW_regu = mean_absolute_error(y_train, y_pred_train_LW_regu)
 y_pred_test_LW_regu = weighted_regression_predict2(X_train, y_train, X_test, lambda_ = 0.5, regu = 'L1')
-mse_test_LW_regu = mean_squared_error(y_test, y_pred_test_LW_regu)
+mae_test_LW_regu = mean_absolute_error(y_test, y_pred_test_LW_regu)
 
 # X_u_regu, y_u_regu = weighted_regression_fit(X_train, y_train, lambda_ = 0.5)
 # y_pred_train_LW_regu = weighted_regression_predict(X_train, X_u, y_u)
-# mse_train_LW_regu = mean_squared_error(y_train, y_pred_train_LW_regu)
+# mae_train_LW_regu = mean_absolute_error(y_train, y_pred_train_LW_regu)
 # y_pred_test_LW_regu = weighted_regression_predict(X_test, X_u, y_u)
-# mse_test_LW_regu = mean_squared_error(y_test, y_pred_test_LW_regu)
+# mae_test_LW_regu = mean_absolute_error(y_test, y_pred_test_LW_regu)
 print("L1 Regularized locally weighted linear regression:")
-print('Training mse: ', mse_train_LW_regu)
-print("Test mse: ", mse_test_LW_regu)
+print('Training mae: ', mae_train_LW_regu)
+print("Test mae: ", mae_test_LW_regu)
 print()
 
 
 # L2 Regularized locally weighted regression 
 y_pred_train_LW_regu = weighted_regression_predict2(X_train, y_train, X_train, lambda_ = 0.5, regu = 'L2')
-mse_train_LW_regu = mean_squared_error(y_train, y_pred_train_LW_regu)
+mae_train_LW_regu = mean_absolute_error(y_train, y_pred_train_LW_regu)
 y_pred_test_LW_regu = weighted_regression_predict2(X_train, y_train, X_test, lambda_ = 0.5, regu = 'L2')
-mse_test_LW_regu = mean_squared_error(y_test, y_pred_test_LW_regu)
+mae_test_LW_regu = mean_absolute_error(y_test, y_pred_test_LW_regu)
 
 # X_u_regu, y_u_regu = weighted_regression_fit(X_train, y_train, lambda_ = 0.5)
 # y_pred_train_LW_regu = weighted_regression_predict(X_train, X_u, y_u)
-# mse_train_LW_regu = mean_squared_error(y_train, y_pred_train_LW_regu)
+# mae_train_LW_regu = mean_absolute_error(y_train, y_pred_train_LW_regu)
 # y_pred_test_LW_regu = weighted_regression_predict(X_test, X_u, y_u)
-# mse_test_LW_regu = mean_squared_error(y_test, y_pred_test_LW_regu)
+# mae_test_LW_regu = mean_absolute_error(y_test, y_pred_test_LW_regu)
 print("L2 Regularized locally weighted linear regression:")
-print('Training mse: ', mse_train_LW_regu)
-print("Test mse: ", mse_test_LW_regu)
+print('Training mae: ', mae_train_LW_regu)
+print("Test mae: ", mae_test_LW_regu)
 print()
 
 
@@ -523,9 +523,9 @@ print()
 K = 5
 
 # Values of the hyperparameter to be examined
-lambda_ = np.linspace(30,50,10)
+lambda_ = np.linspace(0.001,0.01,10)
 
-mse_lw = []
+mae_lw = []
 
 # Loop through lambda values 
 for l in lambda_:
@@ -533,36 +533,41 @@ for l in lambda_:
     # Redefine training sets 
     xx_train, yy_train = X_train, y_train
     
-    mse_lw.append(0)
+    mae_lw.append(0)
     
     # Loop through cross-validation steps 
     for k in range(K):
         xx_train, xx_val, yy_train, yy_val = train_test_split(xx_train, yy_train, test_size=1/((K+1)-k), shuffle=False)
         
         y_pred = weighted_regression_predict2(xx_train, yy_train, xx_val, lambda_ = l, regu = 'L1')
-        mse_lw[-1] += mean_squared_error(yy_val, y_pred) / K
+        mae_lw[-1] += mean_absolute_error(yy_val, y_pred) / K
         
         # With vol 1
         # X_u, y_u = weighted_regression_fit(xx_train, yy_train, lambda_ = l)
         # y_pred = weighted_regression_predict(xx_val, X_u, y_u)
-        # mse_lw[-1] += mean_squared_error(yy_val, y_pred) / K
+        # mae_lw[-1] += mean_absolute_error(yy_val, y_pred) / K
 
-print(mse_lw) 
+print(mae_lw) 
 
-# Find the lambda value which results in the lowest validation mse  
-min_ix = np.argmin(np.asarray(mse_lr))
+# Find the lambda value which results in the lowest validation mae  
+min_ix = np.argmin(np.asarray(mae_lr))
 lambda_ = lambda_[min_ix]
 
 # Train the best regularized model on entire training set and evaluate on 
 # test set
 
-y_pred = weighted_regression_predict2(xx_train, yy_train, xx_val, lambda_ = lambda_, regu = 'L1')
+y_pred_train = weighted_regression_predict2(X_train, y_train, X_train, lambda_ = lambda_, regu = 'L1')
+mae_train = mean_absolute_error(y_train, y_pred_train)
+y_pred_test = weighted_regression_predict2(X_train, y_train, X_test, lambda_ = lambda_, regu = 'L1')
+mae_test = mean_absolute_error(y_test, y_pred_test)
 
 # X_u, y_u = weighted_regression_fit(X_train, y_train, lambda_ = lambda_)
 # y_pred = weighted_regression_predict(X_test, X_u, y_u)
-mse_lw = mean_squared_error(y_test, y_pred)
+# mae_lw = mean_absolute_error(y_test, y_pred)
 print("Best regularized locally weighted linear regression:")
-print("Test mse: ", mse_lw)
+print("Best lambda: ", lambda_)
+print("Training mae: ", mae_train)
+print("Test mae: ", mae_test)
 print()
 
 
@@ -574,7 +579,7 @@ K = 5
 # Values of the hyperparameter to be examined
 lambda_ = np.linspace(30,50,10)
 
-mse_lw = []
+mae_lw = []
 
 # Loop through lambda values 
 for l in lambda_:
@@ -582,24 +587,24 @@ for l in lambda_:
     # Redefine training sets 
     xx_train, yy_train = X_train, y_train
     
-    mse_lw.append(0)
+    mae_lw.append(0)
     
     # Loop through cross-validation steps 
     for k in range(K):
         xx_train, xx_val, yy_train, yy_val = train_test_split(xx_train, yy_train, test_size=1/((K+1)-k), shuffle=False)
         
         y_pred = weighted_regression_predict2(xx_train, yy_train, xx_val, lambda_ = l)
-        mse_lw[-1] += mean_squared_error(yy_val, y_pred) / K
+        mae_lw[-1] += mean_absolute_error(yy_val, y_pred) / K
         
         # With vol 1
         # X_u, y_u = weighted_regression_fit(xx_train, yy_train, lambda_ = l)
         # y_pred = weighted_regression_predict(xx_val, X_u, y_u)
-        # mse_lw[-1] += mean_squared_error(yy_val, y_pred) / K
+        # mae_lw[-1] += mean_absolute_error(yy_val, y_pred) / K
 
-print(mse_lw) 
+print(mae_lw) 
 
-# Find the lambda value which results in the lowest validation mse  
-min_ix = np.argmin(np.asarray(mse_lr))
+# Find the lambda value which results in the lowest validation mae  
+min_ix = np.argmin(np.asarray(mae_lr))
 lambda_ = lambda_[min_ix]
 
 # Train the best regularized model on entire training set and evaluate on 
@@ -607,9 +612,9 @@ lambda_ = lambda_[min_ix]
 # X_u, y_u = weighted_regression_fit(X_train, y_train, lambda_ = lambda_)
 
 y_pred = weighted_regression_predict2(X_train, y_train, X_test, lambda_ = lambda_, regu = 'L2')
-mse_lw = mean_squared_error(y_test, y_pred)
+mae_lw = mean_absolute_error(y_test, y_pred)
 print("Best regularized locally weighted linear regression:")
-print("Test mse: ", mse_lw)
+print("Test mae: ", mae_lw)
 print()
 
 
@@ -666,8 +671,8 @@ y_pred_cluster_sort = np.concatenate((y_pred_cluster), axis=0)
 y_pred_cluster_sort = y_pred_cluster_sort[y_pred_cluster_sort[:, -1].argsort()]
 y_pred_cluster_sort = np.delete(y_pred_cluster_sort, -1,1)
 
-# Calculating MSE
-mse_cluster = mean_squared_error(y_test, y_pred_cluster_sort)
+# Calculating mae
+mae_cluster = mean_absolute_error(y_test, y_pred_cluster_sort)
 
 
 for i in range(n_clusters):
