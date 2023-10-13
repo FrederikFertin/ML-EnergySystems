@@ -90,7 +90,7 @@ def cf_weighted_fit(X, y, W):
     return np.linalg.inv(XT @ W @ X) @ XT @ W @ y
 
 
-def weighted_regression_fit(X_train, y_train, M = 10, lambda_ = 0, regularization='L2'): # M is # fitting points
+def weighted_regression_fit(X_train, y_train, M = 10, lambda_ = 0, sigma=0.51, regularization='L2'): # M is # fitting points
     """ Weighted regression fit """
     # Number of data points
     N = np.shape(X_train)[0]
@@ -113,12 +113,10 @@ def weighted_regression_fit(X_train, y_train, M = 10, lambda_ = 0, regularizatio
     y_u = np.zeros(M)
     
     # Loop through fitting points 
-    for i in range(M):
-        W = np.zeros((N,N))
-        
+    for i in range(M):        
         # Find weights of all data points given fitting point i
-        W_vector = gaussian_kernel(X_train,X_u[i])
-        
+        W_vector = gaussian_kernel(X_train,X_u[i], sigma=sigma)
+                
         W = np.diagflat(W_vector)
         
         # Find parameters beta and y value for fitting point i
@@ -252,12 +250,14 @@ def l1_fit(X, y, lambda_, W=None):
 def l2_fit(X, y, lambda_):
     """ Fitting beta values using L2 regularization """
     XT = np.transpose(X)
-    return np.linalg.inv(XT @ X + lambda_) @ XT @ y
+    N = np.shape(X)[1]
+    return np.linalg.inv(XT @ X + lambda_*np.eye(N)) @ XT @ y
 
 
 def l2_weighted_fit(X, y, W, lambda_):
     XT = np.transpose(X)
-    return np.linalg.inv(XT @ W @ X + lambda_) @ XT @ W @ y
+    N = np.shape(X)[1]
+    return np.linalg.inv(XT @ W @ X + lambda_*np.eye(N)) @ XT @ W @ y
 
 #%% Step 7
 
