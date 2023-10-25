@@ -251,13 +251,45 @@ def l1_fit(X, y, lambda_, W=None):
 ############# L2 - Ridge regression ###############
 def l2_fit(X, y, lambda_):
     """ Fitting beta values using L2 regularization """
+    N = np.shape(X)[1]
     XT = np.transpose(X)
-    return np.linalg.inv(XT @ X + lambda_) @ XT @ y
+    return np.linalg.inv(XT @ X + lambda_ * np.eye(N)) @ XT @ y
 
 
 def l2_weighted_fit(X, y, W, lambda_):
+    N = np.shape(X)[1]
     XT = np.transpose(X)
-    return np.linalg.inv(XT @ W @ X + lambda_) @ XT @ W @ y
+    return np.linalg.inv(XT @ W @ X + lambda_ * np.eye(N)) @ XT @ W @ y
+
+
+def cvL2(X_train,y_train,lb=0,ub=100):
+    # Number of cross-validation iterations
+    K = 5
+
+    # Values of the hyperparameter to be examined
+    lambda_ = np.linspace(lb,ub,11)
+
+    mse_lr = []
+
+    # Loop through lambda values
+    for l in lambda_:
+
+        # Redefine training sets
+        xx_train, yy_train = X_train, y_train
+
+        mse_lr.append(0)
+
+        # Loop through cross-validation steps
+        for k in range(K):
+            xx_train, xx_val, yy_train, yy_val = train_test_split(xx_train, yy_train, test_size=1/((K+1)-k), shuffle=False)
+
+            beta = l2_fit(xx_train,yy_train,l)
+            y_pred = cf_predict(beta, xx_val)
+            mse_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
+    min_ix = np.argmin(np.asarray(mse_lr))
+    lambda_ = lambda_[min_ix]
+    
+    return lambda_
 
 #%% Step 7
 

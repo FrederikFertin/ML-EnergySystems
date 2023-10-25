@@ -15,6 +15,7 @@ from sklearn.cluster import KMeans
 from createXY import prepData, loadBids
 from createOptBids import revenue_calc
 from regression import *
+import seaborn as sns
 
 
 #%% Data set
@@ -26,7 +27,7 @@ test_val_split = 0.5
 
 data, mu_data, std_data = prepData()
 y = loadBids()
-
+prod = data['production']
 
 #%% Prepare price data for revenue calculations
 cwd = os.getcwd()
@@ -45,7 +46,6 @@ power = pd.read_csv(filename)
 power = np.array(power['Actual'])
 
 _, down_test, _,  power_test = train_test_split(down, power, test_size=split, shuffle=False)
-
 
 #%% Feature addition
 M = 0.001
@@ -89,7 +89,7 @@ spot_z = (spot - np.mean(spot[0:int(len(diff1)*(1-split))]))/np.std(spot[0:int(l
 data['low_up'] = diff1
 data['high_down'] = diff2
 data['spot'] = spot_z
-sel_features, mse_list, mse_dict = feature_selection_linear(data, y, training_test_split=training_test_split
+sel_features, mae_list, mae_dict = feature_selection_linear(data, y, training_test_split=training_test_split
                                                   , test_val_split=test_val_split)
 
 
@@ -104,12 +104,33 @@ X = np.array(data[sel_features])
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=split, shuffle=False)
 
+### Calculation of optimal daily revenue: ###
+opt_rev = revenue_calc(power_test, y_test, spot_test, up_test, down_test)
+
 #%% Linear regression model
 beta = cf_fit(X_train, y_train)
-y_pred = cf_predict(beta, X_test)
+y_pred_lr = cf_predict(beta, X_test)
 y_pred_train = cf_predict(beta, X_train)
-mse_train_lr = mean_absolute_error(y_train, y_pred_train)
-mse_test_lr = mean_absolute_error(y_test, y_pred)
+mae_train_lr = mean_absolute_error(y_train, y_pred_train)
+mae_test_lr = mean_absolute_error(y_test, y_pred_lr)
+y_pred = np.array(y_pred_lr)
+y_pred[y_pred < 0] = 0
+y_pred[y_pred > 1] = 1
+revenue_lr = revenue_calc(power_test, y_pred, spot_test, up_test, down_test)
+
+### L2 regularization CV of linear model ###
+lambda_lr = cvL2(X_train, y_train, lb = 40, ub = 50) # ub and lb found through an iterative process
+beta_regu = l2_fit(X_train, y_train, lambda_lr)
+y_pred_l2lr = cf_predict(beta_regu, X_test)
+y_pred_train = cf_predict(beta_regu, X_train)
+mae_train_l2lr = mean_absolute_error(y_train, y_pred_train)
+mae_test_l2lr = mean_absolute_error(y_test, y_pred_l2lr)
+y_pred = np.array(y_pred_l2lr)
+y_pred[y_pred < 0] = 0
+y_pred[y_pred > 1] = 1
+y_bid_l2lr = np.array(y_pred)
+revenue_l2lr = revenue_calc(power_test, y_pred, spot_test, up_test, down_test)
+
 
 #%% Polynomial features
 data['w2'] = data['wind_speed [m/s]']**2
@@ -134,7 +155,7 @@ K = 5
 # Values of the hyperparameter to be examined
 lambda_ = np.linspace(0.02,0.03,11)
 
-mse_lr = []
+mae_lr = []
 
 # Loop through lambda values 
 for l in lambda_:
@@ -142,7 +163,7 @@ for l in lambda_:
     # Redefine training sets
     xx_train, yy_train = X_train, y_train
     
-    mse_lr.append(0)
+    mae_lr.append(0)
     
     # Loop through cross-validation steps 
     for k in range(K):
@@ -152,13 +173,10 @@ for l in lambda_:
         clf.fit(xx_train,yy_train)
         
         y_pred = clf.predict(xx_val)
-        mse_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
+        mae_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
 
-print(mse_lr)
-print()
-
-# Find the lambda value which results in the lowest validation mse  
-min_ix = np.argmin(np.asarray(mse_lr))
+# Find the lambda value which results in the lowest validation mae  
+min_ix = np.argmin(np.asarray(mae_lr))
 lambda_ = lambda_[min_ix]
 
 # Train the best regularized model on entire training set and evaluate on 
@@ -166,215 +184,153 @@ lambda_ = lambda_[min_ix]
 clf = linear_model.Lasso(alpha=lambda_,fit_intercept=False)
 clf.fit(X_train,y_train)
 beta = clf.coef_
-y_pred = clf.predict(X_test)
+coeffs_chosen = abs(beta) > 0
+
+#%% Polynomial model after feature selection:
+X_poly = X_poly[:,coeffs_chosen]
+X_train, X_test, y_train, y_test = train_test_split(X_poly, y, test_size=split, shuffle=False)
+
+beta = cf_fit(X_train, y_train)
+y_pred_pr = cf_predict(beta, X_test)
 y_pred_train = cf_predict(beta, X_train)
-mse_train_pr = mean_absolute_error(y_train, y_pred_train)
-mse_test_pr = mean_absolute_error(y_test,y_pred)
-print("Best L1 regularized linear regression:")
-print("Model coefficients: ", beta)
-print("Test mae: ", mse_lr)
-print()
+mae_train_pr = mean_absolute_error(y_train, y_pred_train)
+mae_test_pr = mean_absolute_error(y_test,y_pred_pr)
+y_pred = np.array(y_pred_pr)
+y_pred[y_pred < 0] = 0
+y_pred[y_pred > 1] = 1
+revenue_pr = revenue_calc(power_test, y_pred, spot_test, up_test, down_test)
 
-#%% Step 4.2
-# Gaussian kernel
-X_u, y_u = weighted_regression_fit(X_train, y_train)
-y_pred = weighted_regression_predict(X_test, X_u, y_u)
-mse = mean_absolute_error(y_test, y_pred)
-print("MSE using weighted linear regression: " + str(mse))
+### L2 regularization CV of polynomial model ###
+lambda_pr = cvL2(X_train, y_train, lb = 70, ub = 90) # ub and lb found through an iterative process
+beta_regu = l2_fit(X_train, y_train, lambda_pr)
+y_pred_l2pr = cf_predict(beta_regu, X_test)
+y_pred_train = cf_predict(beta_regu, X_train)
+mae_train_l2pr = mean_absolute_error(y_train, y_pred_train)
+mae_test_l2pr = mean_absolute_error(y_test, y_pred_l2pr)
+y_pred = np.array(y_pred_l2pr)
+y_pred[y_pred < 0] = 0
+y_pred[y_pred > 1] = 1
+y_bid_l2pr = np.array(y_pred)
+revenue_l2pr = revenue_calc(power_test, y_pred, spot_test, up_test, down_test)
 
-#%% Step 5.1
+#%% Locally weighted regression
+print('Initiating lw regression')
+y_pred_lw = weighted_regression_fit_predict2(X_train, y_train, X_test, lambda_ = 0, regu = '', sigma = 0.51, message=False)
+#y_pred_train = weighted_regression_fit_predict2(X_train, y_train, X_train, lambda_ = 0, regu = '', sigma = 0.51, message=False)
+#mae_train_lw = mean_absolute_error(y_train, y_pred_train)
+mae_test_lw = mean_absolute_error(y_test, y_pred_lw)
+y_pred = np.array(y_pred_lw)
+y_pred[y_pred < 0] = 0
+y_pred[y_pred > 1] = 1
+revenue_lw = revenue_calc(power_test, y_pred, spot_test, up_test, down_test)
 
+#%% Locally weighted regression - regularized
+### L2 regularization ###
+# Lambda has been determined using cross validation (lambda_lw = 1)
+print('Initiating regu. lw regression')
+lambda_lw = 1
+y_pred_l2lw = weighted_regression_fit_predict2(X_train, y_train, X_test, lambda_ = lambda_lw, regu = 'L2', sigma = 0.51, message=True)
+mae_test_l2lw = mean_absolute_error(y_test, y_pred_l2lw)
+#y_pred_train = weighted_regression_fit_predict2(X_train, y_train, X_train, lambda_ = lambda_lw, regu = 'L2', sigma = 0.51, message=True)
+#mae_train_l2lw = mean_absolute_error(y_train, y_pred_train)
+y_pred = np.array(y_pred_l2lw)
+y_pred[y_pred_l2lw < 0] = 0
+y_pred[y_pred_l2lw > 1] = 1
+y_bid_l2lw = np.array(y_pred)
+revenue_l2lw = revenue_calc(power_test, y_pred, spot_test, up_test, down_test)
 
+#%% Clustering of bid predictions
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=split, shuffle=False)
 
-
-
-# Regularized linear regression
-beta_regu = l2_fit(X_train,y_train,0.5)
-y_pred_train_regu = cf_predict(beta_regu, X_train)
-mse_train_regu = mean_absolute_error(y_train,y_pred_train_regu)
-y_pred_test_regu = cf_predict(beta_regu, X_test)
-mse_test_regu = mean_absolute_error(y_test,y_pred_test_regu)
-print("Regularized linear regression:")
-print("Model coefficients: ", beta_regu)
-print('Training mse: ', mse_train_regu)
-print("Test mse: ", mse_test_regu)
-print()
-
-# Regularized locally weighted regression
-X_u_regu, y_u_regu = weighted_regression_fit(X_train, y_train, lambda_ = 0.5)
-y_pred_train_LW_regu = weighted_regression_predict(X_train, X_u, y_u)
-mse_train_LW_regu = mean_absolute_error(y_train, y_pred_train_LW_regu)
-y_pred_test_LW_regu = weighted_regression_predict(X_test, X_u, y_u)
-mse_test_LW_regu = mean_absolute_error(y_test, y_pred_test_LW_regu)
-print("Regularized locally weighted linear regression:")
-print('Training mse: ', mse_train_LW_regu)
-print("Test mse: ", mse_test_LW_regu)
-print()
-
-#%% Step 5.2-6 Linear Regression
-# Number of cross-validation iterations
-K = 5
-
-# Values of the hyperparameter to be examined
-lambda_ = np.linspace(100,300,10)
-
-mse_lr = []
-
-# Loop through lambda values
-for l in lambda_:
-
-    # Redefine training sets
-    xx_train, yy_train = X_train, y_train
-
-    mse_lr.append(0)
-
-    # Loop through cross-validation steps
-    for k in range(K):
-        xx_train, xx_val, yy_train, yy_val = train_test_split(xx_train, yy_train, test_size=1/((K+1)-k), shuffle=False)
-
-        beta = l2_fit(xx_train,yy_train,l)
-        y_pred = cf_predict(beta, xx_val)
-        mse_lr[-1] += mean_absolute_error(yy_val,y_pred) / K
-
-print(mse_lr)
-print()
-
-# Find the lambda value which results in the lowest validation mse
-min_ix = np.argmin(np.asarray(mse_lr))
-lambda_ = lambda_[min_ix]
-
-# Train the best regularized model on entire training set and evaluate on
-# test set
-beta = l2_fit(X_train,y_train,lambda_)
-y_pred = cf_predict(beta, X_test)
-mse_lr = mean_absolute_error(y_test,y_pred)
-print("Best regularized linear regression:")
-print("Model coefficients: ", beta)
-print("Test mse: ", mse_lr)
-print()
-
-bid = y_pred
-revenue = revenue_calc(bid, y_test, spot_test, up_test, down_test)
-
-#%% Step 5.2-6 Locally weighted regression
-
-# Values of the hyperparameter to be examined
-lambda_ = np.linspace(30,50,10)
-
-mse_lw = []
-
-# Loop through lambda values
-for l in lambda_:
-
-    # Redefine training sets
-    xx_train, yy_train = X_train, y_train
-
-    mse_lw.append(0)
-
-    # Loop through cross-validation steps
-    for k in range(K):
-        xx_train, xx_val, yy_train, yy_val = train_test_split(xx_train, yy_train, test_size=1/((K+1)-k), shuffle=False)
-
-        X_u, y_u = weighted_regression_fit(xx_train, yy_train, lambda_ = l)
-        y_pred = weighted_regression_predict(xx_val, X_u, y_u)
-        mse_lw[-1] += mean_absolute_error(yy_val, y_pred) / K
-
-print(mse_lw)
-
-# Find the lambda value which results in the lowest validation mse
-min_ix = np.argmin(np.asarray(mse_lr))
-lambda_ = lambda_[min_ix]
-
-# Train the best regularized model on entire training set and evaluate on
-# test set
-X_u, y_u = weighted_regression_fit(X_train, y_train, lambda_ = lambda_)
-y_pred = weighted_regression_predict(X_test, X_u, y_u)
-mse_lw = mean_absolute_error(y_test, y_pred)
-print("Best regularized locally weighted linear regression:")
-print("Test mse: ", mse_lw)
-print()
-
-# %% Step 7.1
-data['o']
-n_clusters = 3
-
-kmeans = KMeans(n_clusters=n_clusters,
-                n_init=10,
-                random_state=1)
-kmeans.fit(X_train)
-center_locations = kmeans.cluster_centers_
-train_labels = kmeans.labels_
-test_labels = kmeans.predict(X_test)
-# Adding predicted labels to X_train
-X_train_cluster = np.append(X_train, np.reshape(train_labels, (len(train_labels), 1)), axis=1)
-# Adding temporary index labels to merge sets later
-indexes = np.reshape(range(len(X_test)),(len(X_test), 1))
-X_test_cluster = np.append(X_test, indexes, axis=1)
-# Adding predicted labels to X_test, y_train and y_test
-X_test_cluster = np.append(X_test_cluster, np.reshape(test_labels, (len(test_labels), 1)), axis=1)
-y_train_cluster = np.vstack((y_train, train_labels)).T
-y_test_cluster = np.vstack((y_test, test_labels)).T
-
-# Splitting by label
-X_test_sets = separate_labels(X_test_cluster, n_clusters)
-X_train_sets = separate_labels(X_train_cluster, n_clusters)
-y_test_sets = separate_labels(y_test_cluster, n_clusters)
-y_train_sets = separate_labels(y_train_cluster, n_clusters)
-
-# Removing and saving test indices
-indices_list = []
-for i in range(n_clusters):
-    indices_list.append(X_test_sets[i][:,-1])
-    X_test_sets[i] = np.delete(X_test_sets[i], -1,1)
-
-beta_cluster = []
-y_pred_cluster = []
-# Predicting, different models can be chosen for different clusters
-beta_cluster.append(cf_fit(X_train_sets[0],y_train_sets[0]))
-y_pred_cluster.append(cf_predict(beta_cluster[0], X_test_sets[0]))
-
-beta_cluster.append(cf_fit(X_train_sets[1],y_train_sets[1]))
-y_pred_cluster.append(cf_predict(beta_cluster[1], X_test_sets[1]))
-
-if n_clusters>2:
-    beta_cluster.append(cf_fit(X_train_sets[2],y_train_sets[2]))
-    y_pred_cluster.append(cf_predict(beta_cluster[2], X_test_sets[2]))
-
-
-# Merging datapoints and sorting them to original order
-for i in range(n_clusters):
-    y_pred_cluster[i] = np.vstack((y_pred_cluster[i][:,0],indices_list[i])).T
-y_pred_cluster_sort = np.concatenate((y_pred_cluster), axis=0)
-y_pred_cluster_sort = y_pred_cluster_sort[y_pred_cluster_sort[:, -1].argsort()]
-y_pred_cluster_sort = np.delete(y_pred_cluster_sort, -1,1)
-
-# Calculating MSE
-mse_cluster = mean_absolute_error(y_test, y_pred_cluster_sort)
-
-
-for i in range(n_clusters):
-    plt.scatter(X_train_sets[i][:,1], y_train_sets[i], s=1)
-
-# Done in separate loop to ensure that predicted values are on top
-for i in range(n_clusters):
-    plt.scatter(X_test_sets[i][:,1],y_pred_cluster[i][:,0],s=1)
+def clusterBid(X_train, y_train, X_test, ix1 = 1, ix2 = 4):
+    # ix1 = 1 and ix2 = 4 if it is the linear regression X
+    # ix1 = 1 and ix2 = 5 if it is the polynomial regression X
+    # Initialise bids at 0.5 for all hours
+    y_pred = np.ones(len(X_test))*0.5
+    labels = pd.Series(np.arange(len(X_test)))
+    # If the down regulation price is higher than the spot price bid nothing:
+    high_down = X_test[:,ix1] >= 0
+    y_pred[high_down] = 0
+    labels[high_down] = ['High down-regulation price']*sum(high_down)
+    # If the up regulation price is lower than the spot price bid everything:
+    low_up = X_test[:,ix2] >= 0
+    y_pred[low_up] = 1
+    labels[low_up] = ['Low up-regulation price']*sum(low_up)
     
+    rest = high_down+low_up == 0
+    
+    # Train_rest added just before delivery and mentioned in report
+    train_rest = (0 == ((X_train[:,ix1] >= 0) + (X_train[:,ix2] >= 0)) ) 
+    
+    y_pred[rest] = weighted_regression_fit_predict2(X_train[train_rest,:], y_train[train_rest], X_test[rest,:], lambda_ = 1, regu = 'L2', sigma = 0.51, message=False)
+    labels[rest] = ['Other market conditions']*sum(rest)
+    
+    return y_pred, labels
+
+y_pred_cl, labels_test = clusterBid(X_train, y_train, X_test)
+mae_test_cluster = mean_absolute_error(y_test, y_pred)
+y_pred_train, labels_train = clusterBid(X_train, y_train, X_train)
+mae_train_cluster = mean_absolute_error(y_train, y_pred_train)
+y_pred = np.array(y_pred_cl)
+y_pred[y_pred < 0] = 0
+y_pred[y_pred > 1] = 1
+y_bid_cl = np.array(y_pred)
+revenue_cluster = revenue_calc(power_test, y_pred, spot_test, up_test, down_test)
+
+#%% Visualizations
+plt.rcParams.update({'font.size': 13})
+
+df_preds = pd.DataFrame()
+df_preds['Opt preds'] = y_test
+df_preds['LR preds'] = y_pred_l2lr
+df_preds['PR preds'] = y_pred_l2pr
+df_preds['LW preds'] = y_pred_l2lw
+df_preds['CL preds'] = y_pred_cl
+
+plt.figure(figsize=(6,6))
+sns.set(font_scale=0.8)
+sns.histplot(df_preds,fill=False,palette=sns.color_palette("tab10")[0:5],linewidth = 1.5).set(title='Model predictions')
+plt.xlabel('Predicted optimal bid')
+plt.xlim(-1,2)
+#plt.legend(title='Model', fontsize=10)
 plt.show()
-        
-        
-    
-    
+
+sns.displot(df_preds, kind='kde', bw_adjust=0.5)
+
+df_bids = pd.DataFrame()
+df_bids['Opt bids'] = y_test
+df_bids['LR bids'] = y_bid_l2lr
+df_bids['PR bids'] = y_bid_l2pr
+df_bids['LW bids'] = y_bid_l2lw
+df_bids['CL bids'] = y_bid_cl
+
+plt.figure(figsize=(6,6))
+sns.set(font_scale=0.8)
+sns.histplot(df_bids,fill=False,palette=sns.color_palette("tab10")[0:5],linewidth = 1.5).set(title='Model bids')
+plt.xlabel('Bids')
+#plt.xlim(-1,2)
+#plt.legend(title='Model', fontsize=10)
+plt.show()
 
 
+sns.histplot(df_bids, fill=False)
+sns.displot(df_bids, kind='kde', bw_adjust=.5)
 
+df_cl = pd.DataFrame()
+df_cl['Market balance'] = labels_test
+df_cl['Predictions'] = y_pred_cl
+df_cl['Bids'] = y_bid_cl
+sns.histplot(df_cl, x = 'Predictions', hue='Market balance')
+plt.show()
 
-
-
-
-
-
-
-
-
-
+colors = sns.color_palette()
+#plt.hist(y_pred_cl,color=colors[0],alpha=0.5,label='Cluster model')
+plt.hist(y_pred_l2lw,color=colors[1],alpha=0.5,label='L2 LW. model')
+#plt.hist(y_pred_l2lw_actual,color=colors[2],alpha=0.5,label='L2 LW. model - actual bids')
+plt.hist(y_pred_l2lr,color=colors[3],alpha=0.5,label='L2 LR model')
+plt.hist(y_pred_l2pr,color=colors[4],alpha=0.5,label='L2 PR model')
+plt.xlabel('Model Bids')
+plt.ylabel('Occurences')
+plt.legend(loc='upper center')
+plt.show()
 
