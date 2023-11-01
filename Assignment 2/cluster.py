@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 #from sklearn.model_selection import train_test_split
 
 #%%
-class ReinforcementModel:    
+class RM:    
     
-    def __init__(self, prices, socs = np.linspace(0,500,6), actions = np.array([-100,0,100])):
+    def __init__(self, socs = np.linspace(0,500,6), actions = np.array([-100,0,100])):
         self.socs = socs
         self.n_socs = len(self.socs)
         self.actions = actions
@@ -16,10 +16,10 @@ class ReinforcementModel:
         self.P = np.ones(
             (len(self.price_levels),len(self.price_levels))
              ) / len(self.price_levels)
-        self.calcRewardMatrix()
+        self.calcRmatrix()
     
     def setPriceLevels(self):
-        self.price_levels = [-1,0,1]
+        self.price_levels = [1,2,3]
         self.levels = len(self.price_levels)
     
     def displayInfo(self):
@@ -53,7 +53,8 @@ class ReinforcementModel:
         else:
             return 0
     
-    def calcRewardMatrix(self):
+    def calcRmatrix(self):
+        
         self.R = np.zeros(
             (self.levels, self.n_socs, self.n_actions)
             )
@@ -63,54 +64,47 @@ class ReinforcementModel:
                 for (a, action) in enumerate(soc):
                     if (s == 0 and a == 0)\
                         or (s == self.n_socs-1 and a == self.n_actions-1):
-                        self.R[l,s,a] = -np.inf
+                        self.R[l,s,a] = - np.inf
                     else:
-                        self.R[l,s,a] = self.price_levels[l] * self.actions[a]
+                        self.R[l,s,a] = - self.price_levels[l] * self.actions[a]
 
-    def MDP(self, gamma = 0.9, maxIter = 1000):
-        self.R = self.R
-        last_val = np.zeros(self.R.shape)
-        values = np.zeros(self.R.shape)
+    def valueIter(self, gamma = 0.9, maxIter = 1000):
+        last_val = np.zeros((self.levels, self.n_socs))
+        values = np.zeros((self.levels, self.n_socs))
+        policy = np.zeros((self.levels, self.n_socs))
         iters = 0
-        policy = np.ones(self.R.shape)*10
-        
         while True:
-            for p1 in range(self.levels):
-                for s1 in range(self.n_socs):
-                    best_val_sum = -np.inf
+            for p in range(self.levels):
+                for s in range(self.n_socs):
+                    vals = []
                     for a in range(self.n_actions):
                         # Calculating sum
-                        val_sum = 0
+                        val_sum = self.R[p,s,a]
                         # Either make cost of going to impossible soc infinite or
                         # Limit charge/discharge at edge state
-                        for p2 in range(self.n_socs):
-                            for s2 in range(self.n_socs):
-                                val_sum += gamma*self.calcProbability([p1,s1],a,[p2,s2])*max(last_val[p2,s2,[0,1,2]])
-                        if val_sum > best_val_sum:
-                            policy[p1,s1] = a
-                            best_val_sum = val_sum
-                    # end for
-                    values[p1,s1,a] = self.R[p1,s1,policy[p1,s1]] + val_sum
-            if values==last_val or iters >= maxIter:
+                        for i in range(len(self.P[p])):
+                            if s+a-1 >= 0 and s+a-1 < self.n_socs:
+                                val_sum += gamma * self.P[p,i] * last_val[i,s+a-1]
+    
+                        vals.append(val_sum)
+                    values[p,s] = max(vals)
+                    policy[p,s] = self.actions[np.argmax(vals)]
+                    
+            if np.all(values==last_val) or iters >= maxIter:
                 break
             last_val = values.copy()
             iters += 1
-        
-        self.values = values
+            #print('test')
+        self.V = values
+        self.Pi = policy
+        return values, iters
+    
+    def optPolicy(self):
+        self.pi = np.zeros((self.levels, self.n_socs))
+        for p in range(self.levels):
+            for s in range(self.n_socs):
+                self.pi[p,s] = np.argmax(self.V[p,s])
 
-#%%
-
-
-
-"""
-def calcStateValues(socs,actions,prices,gamma,P):
-    V = np.zeros([len(socs),len(prices),len(actions)])
-    for (i,soc) in enumerate(V):
-        for (j,price) in enumerate(soc):
-            for (k,action) in enumerate(price):
-                P = calcProbability([price,soc], action, state2, P)
-                V[i,j,k] = gamma*P[i,j,k]*V[i,j,k]
-"""
 
 #%%
 trainsize = 0.75
@@ -147,6 +141,11 @@ medium = df["Spot"].loc[df["Discrete"] == 0].mean()
 low = df["Spot"].loc[df["Discrete"] == -1].mean()
 
 actions = np.array([-100,0,100])
+
+model = RM()
+model.calcPmatrix(df)
+values, iters = model.valueIter()
+model.optPolicy()
 
 #P = calcPmatrix(df)
 
