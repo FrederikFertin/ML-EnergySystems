@@ -218,7 +218,8 @@ plt.show()
 #P = calcPmatrix(df)
 
 #%% Testing 
-gammas = np.linspace(0.99,0.999,12-3)
+del model
+gammas = np.linspace(0.99,0.9999,12-3)
 
 for ix, n_lev in enumerate(range(3,12)):
     p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_lev)
@@ -228,13 +229,14 @@ for ix, n_lev in enumerate(range(3,12)):
 
     values, iters = model.valueIter(gamma=gammas[ix],maxIter=1000)
 
-    profits, socs = model.test(p_test)
+    profitss, socss = model.test(p_test)
     plt.title(str("Number of price categories/levels: " + str(n_lev)))
     plt.scatter(np.arange(len(p_test)),p_test,color='black',alpha=0.1,s=0.1)
-    plt.plot(profits)
+    plt.plot(profitss)
     plt.ylabel("Total profit")
     plt.xlabel("Hour of trading in test market")
     plt.show()
+    del model
 
 #plt.plot(socs)
 #plt.show()
