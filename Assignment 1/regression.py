@@ -6,13 +6,13 @@ from sklearn.model_selection import train_test_split
 from sklearn import linear_model
 
 #%% Step 2
-def feature_selection_linear(data, y, training_test_split, test_val_split):
+def feature_selection_linear(data, y, training_test_split, training_val_split):
     feature_list = data.columns.values
     feature_list = np.delete(feature_list, np.where(feature_list == 'production'))
     X = np.array(data[feature_list])
     # Splitting into train, test and validation sets
-    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=training_test_split, shuffle=False)
-    X_val, X_test, y_val, y_test = train_test_split(X_val, y_val, test_size=test_val_split, shuffle=False)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=training_test_split, shuffle=False)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=training_val_split, shuffle=False)
     
     # Creating a list of the indices of features added to the model
     added_features = [np.where(feature_list == 'ones')[0][0]]
