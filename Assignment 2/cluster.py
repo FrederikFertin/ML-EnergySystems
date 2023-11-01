@@ -98,6 +98,21 @@ class RLM:
         self.V = values
         self.Pi = policy
         return values, iters
+    
+    def test(self, df_test):
+        profits = [0]
+        socs = [200]
+        for t in range(len(df_test)):
+            p = int(df_test['Discrete'].iloc[t])
+            s = np.where(self.socs == socs[-1])[0][0]
+            
+            a = model.Pi[p,s]
+            price = df_test['Spot'].iloc[t]
+            profits.append(profits[-1] + df_test['Spot'].iloc[t] * (-a))
+
+            socs.append(socs[-1] + a)
+        
+        return profits, socs
 
 
 #%%
@@ -149,16 +164,57 @@ medium = df["Spot"].loc[df["Discrete"] == 0].mean()
 low = df["Spot"].loc[df["Discrete"] == -1].mean()
 
 model = RLM()
-model.calcPmatrix(df_train)
 
+model.calcPmatrix(df)
 
-#model.calcPmatrix(df)
-
-values, iters = model.valueIter()
+values, iters = model.valueIter(gamma = 0.99, maxIter = 1000)
 
 
 
 #P = calcPmatrix(df)
+
+#%% Testing 
+profits, socs = model.test(df)
+
+plt.plot(profits)
+plt.show()
+
+plt.plot(socs)
+plt.show()
+
+
+"""
+profits = [0]
+soc = 200
+for t in range(len(df_test)):
+    p = int(df_test['Discrete'].iloc[t])
+    s = np.where(model.socs == soc)[0][0]
+    
+    a = model.Pi[p,s]
+    price = df_test['Spot'].iloc[t]
+    profits.append(profits[-1] + df_test['Spot'].iloc[t] * (-a))
+
+    soc += a
+    
+plt.plot(profits)
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
