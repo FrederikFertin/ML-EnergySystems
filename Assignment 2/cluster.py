@@ -26,15 +26,22 @@ class RLM:
         print(self.socs)
         print(self.actions)
     
-    def calcPmatrix(self,df):
-        C = np.zeros((3,3))
+    def calcPmatrix(self,prices,price_levels):
+        prices = np.round(prices,2)
+        price_levels = np.round(price_levels,2)
+        
+        C = np.zeros((len(price_levels),len(price_levels)))
 
-        j = 0
-        for i in df.Discrete:
-            C[j+1,int(i+1)] += 1
-            j = int(i)
+        last_price = prices[0]
+        for (ix, current_price) in enumerate(prices):
+            if ix == 0:
+                continue
+            from_price = np.where(np.array(price_levels) == last_price)[0][0]
+            to_price = np.where(np.array(price_levels) == current_price)[0][0]
+            C[from_price,to_price] += 1
+            last_price = current_price
 
-        self.P = C/len(df.Discrete)*3
+        self.P = C/len(prices)*len(price_levels)
     
     def calcProbability(self, s1, a, s2):
         """
@@ -114,6 +121,21 @@ class RLM:
         
         return profits, socs
 
+def getPriceLevels(prices,n_levels):
+    p = prices.copy()
+    price_cuts = np.quantile(prices, np.linspace(0,1,n_levels+1))[:n_levels]
+    price_levels = np.zeros(n_levels)
+    for i in range(n_levels):
+        if i < n_levels-1:
+            price_levels[i] = prices.loc[(p >= price_cuts[i]) & (p < price_cuts[i+1])].mean()
+            prices.loc[(p >= price_cuts[i]) & (p < price_cuts[i+1])] = price_levels[i]
+        else:
+            price_levels[i] = prices.loc[p >= price_cuts[i]].mean()
+            prices.loc[p >= price_cuts[i]] = price_levels[i]
+    
+    return prices, price_levels, price_cuts
+
+    
 
 #%%
 trainsize = 0.75
@@ -131,6 +153,7 @@ p_train = prices[:int(len(prices)*(trainsize))]
 p_test = prices[int(len(prices)*(trainsize)):]
 
 #%%
+"""
 soc = np.linspace(0, 500, 6)
 actions = np.array([-100,0,100])
 price_levels = np.quantile(prices,[1/3,2/3])
@@ -151,23 +174,21 @@ high = df["Spot"].loc[df["Discrete"] == 1].mean()
 medium = df["Spot"].loc[df["Discrete"] == 0].mean()
 low = df["Spot"].loc[df["Discrete"] == -1].mean()
 
-
+"""
 #%%
+n_levels = 3
 df_train = df.iloc[:180*24,:]
 df_test = df.iloc[180*24:200*24,:]
 
 p_train = df_train['Spot']
 p_test = df_test['Spot']
 
-high = df["Spot"].loc[df["Discrete"] == 1].mean()
-medium = df["Spot"].loc[df["Discrete"] == 0].mean()
-low = df["Spot"].loc[df["Discrete"] == -1].mean()
+p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_levels)
 
 model = RLM()
+model.calcPmatrix(p_trains, p_levels)
 
-model.calcPmatrix(df)
-
-values, iters = model.valueIter(gamma = 0.99, maxIter = 1000)
+values, iters = model.valueIter(gamma=0.99)
 
 
 
@@ -182,22 +203,6 @@ plt.show()
 plt.plot(socs)
 plt.show()
 
-
-"""
-profits = [0]
-soc = 200
-for t in range(len(df_test)):
-    p = int(df_test['Discrete'].iloc[t])
-    s = np.where(model.socs == soc)[0][0]
-    
-    a = model.Pi[p,s]
-    price = df_test['Spot'].iloc[t]
-    profits.append(profits[-1] + df_test['Spot'].iloc[t] * (-a))
-
-    soc += a
-    
-plt.plot(profits)
-"""
 
 
 
