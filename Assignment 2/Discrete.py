@@ -15,18 +15,18 @@ def MDP(rewards, probs, gamma,maxIter):
                     # Either make cost of going to impossible soc infinite or
                     # Limit charge/discharge at edge state
                     for i in range(len(probs[p,s])):
-                        print(p,s,a,i)
-                        if gamma*probs[p,s,i] != 0:
-                            val_sum += gamma*probs[p,s,i]*max(values[p+i-1,s+a-1,[0,1,2]])
+                        if gamma*probs[p,s,i] != 0 and s+a-1>=0 and s+a-1<len(values[p]):
+                            val_sum += gamma*probs[p,s,i]*max(last_val[p+i-1,s+a-1,[0,1,2]])
+                        else: 
+                            val_sum += 0
                     
                     values[p,s,a] = rewards[p,s,a] + val_sum
-        
-        if values==last_val or iters >= maxIter:
+        if np.all(values==last_val) or iters >= maxIter:
             break
-        last_val = values
+        last_val = values.copy()
         iters += 1
-    
-    return(values)
+        #print('test')
+    return values, iters
         
 
 cwd = os.getcwd()
@@ -35,17 +35,17 @@ df = pd.read_csv(temp_dir)
 
 prices = df.Spot.values
 
-rewards = np.zeros((3,8,3))
+rewards = np.zeros((3,6,3))
 for i in range(len(rewards)):
     for j in range(len(rewards[i])):
-        rewards[i,j,0] = 1
+        rewards[i,j,0] = (i+1)
         rewards[i,j,1] = 0
-        rewards[i,j,2] = -1
-rewards[:,0,0] = -100
-rewards[:,7,2] = -100
+        rewards[i,j,2] = -(i+1)
+rewards[:,0,0] = -10
+rewards[:,5,2] = -10
 
 #values = np.zeros((3,6,3))
-probs = np.zeros((3,8,3))
+probs = np.zeros((3,6,3))
 for i in range(len(probs)):
     for j in range(len(probs[i])):
         for k in range(len(probs[i,j])):
