@@ -105,7 +105,21 @@ class RLM:
         self.V = values
         self.Pi = policy
         return values, iters
+    
+    def test(self, df_test):
+        profits = [0]
+        socs = [200]
+        for t in range(len(df_test)):
+            p = int(df_test['Discrete'].iloc[t])
+            s = np.where(self.socs == socs[-1])[0][0]
+            
+            a = model.Pi[p,s]
+            price = df_test['Spot'].iloc[t]
+            profits.append(profits[-1] + df_test['Spot'].iloc[t] * (-a))
 
+            socs.append(socs[-1] + a)
+        
+        return profits, socs
 
 def getPriceLevels(prices,n_levels):
     p = prices.copy()
@@ -179,6 +193,33 @@ values, iters = model.valueIter(gamma=0.99)
 
 
 #P = calcPmatrix(df)
+
+#%% Testing 
+profits, socs = model.test(df)
+
+plt.plot(profits)
+plt.show()
+
+plt.plot(socs)
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
