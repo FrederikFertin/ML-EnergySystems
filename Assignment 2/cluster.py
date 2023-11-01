@@ -7,20 +7,20 @@ import matplotlib.pyplot as plt
 #%%
 class RLM:    
     
-    def __init__(self, socs = np.linspace(0,500,6), actions = np.array([-100,0,100])):
+    def __init__(self, p_levels = [0,1,2], socs = np.linspace(0,500,6), actions = np.array([-100,0,100])):
         self.socs = socs
         self.n_socs = len(self.socs)
         self.actions = actions
         self.n_actions = len(self.actions)
-        self.setPriceLevels()
+        self.setPriceLevels(p_levels)
         self.P = np.ones(
-            (len(self.price_levels),len(self.price_levels))
-             ) / len(self.price_levels)
+            (self.n_levels,self.n_levels)
+             ) / self.n_levels
         self.calcRmatrix()
     
-    def setPriceLevels(self):
-        self.price_levels = [1,2,3]
-        self.levels = len(self.price_levels)
+    def setPriceLevels(self, p_levels):
+        self.price_levels = p_levels
+        self.n_levels = len(self.price_levels)
     
     def displayInfo(self):
         print(self.socs)
@@ -30,7 +30,7 @@ class RLM:
         prices = np.round(prices,2)
         price_levels = np.round(price_levels,2)
         
-        C = np.zeros((len(price_levels),len(price_levels)))
+        C = np.zeros((self.n_levels,self.n_levels))
 
         last_price = prices[0]
         for (ix, current_price) in enumerate(prices):
@@ -63,7 +63,7 @@ class RLM:
     def calcRmatrix(self):
         
         self.R = np.zeros(
-            (self.levels, self.n_socs, self.n_actions)
+            (self.n_levels, self.n_socs, self.n_actions)
             )
         
         for (l,level) in enumerate(self.R):
@@ -76,12 +76,12 @@ class RLM:
                         self.R[l,s,a] = - self.price_levels[l] * self.actions[a]
 
     def valueIter(self, gamma = 0.9, maxIter = 1000):
-        last_val = np.zeros((self.levels, self.n_socs))
-        values = np.zeros((self.levels, self.n_socs))
-        policy = np.zeros((self.levels, self.n_socs))
+        last_val = np.zeros((self.n_levels, self.n_socs))
+        values = np.zeros((self.n_levels, self.n_socs))
+        policy = np.zeros((self.n_levels, self.n_socs))
         iters = 0
         while True:
-            for p in range(self.levels):
+            for p in range(self.n_levels):
                 for s in range(self.n_socs):
                     vals = []
                     for a in range(self.n_actions):
@@ -162,7 +162,7 @@ low = df["Spot"].loc[df["Discrete"] == -1].mean()
 
 """
 #%%
-n_levels = 3
+n_levels = 5
 df_train = df.iloc[:180*24,:]
 df_test = df.iloc[180*24:200*24,:]
 
@@ -171,7 +171,7 @@ p_test = df_test['Spot']
 
 p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_levels)
 
-model = RLM()
+model = RLM(p_levels)
 model.calcPmatrix(p_trains, p_levels)
 
 values, iters = model.valueIter(gamma=0.99)
