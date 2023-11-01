@@ -7,19 +7,20 @@ import matplotlib.pyplot as plt
 #%%
 class RLM:    
     
-    def __init__(self, p_levels = [0,1,2], socs = np.linspace(0,500,6), actions = np.array([-100,0,100])):
+    def __init__(self, plevels = [0,1,2], p_cuts = [0.5,1.5], socs = np.linspace(0,500,6), actions = np.array([-100,0,100])):
         self.socs = socs
         self.n_socs = len(self.socs)
         self.actions = actions
         self.n_actions = len(self.actions)
-        self.setPriceLevels(p_levels)
+        self.price_cuts = p_cuts
+        self.setPriceLevels(plevels)
         self.P = np.ones(
             (self.n_levels,self.n_levels)
              ) / self.n_levels
         self.calcRmatrix()
     
-    def setPriceLevels(self, p_levels):
-        self.price_levels = p_levels
+    def setPriceLevels(self, plevels):
+        self.price_levels = plevels
         self.n_levels = len(self.price_levels)
     
     def displayInfo(self):
@@ -31,17 +32,19 @@ class RLM:
         price_levels = np.round(price_levels,2)
         
         C = np.zeros((self.n_levels,self.n_levels))
-
-        last_price = prices[0]
+        price_level_count = np.zeros(self.n_levels)
+        last_price = prices.iloc[-1]
         for (ix, current_price) in enumerate(prices):
             if ix == 0:
-                continue
+                current_price = prices.iloc[0]
             from_price = np.where(np.array(price_levels) == last_price)[0][0]
             to_price = np.where(np.array(price_levels) == current_price)[0][0]
             C[from_price,to_price] += 1
             last_price = current_price
-
-        self.P = C/len(prices)*len(price_levels)
+            price_level_count[from_price] +=1
+        
+        #self.P = C/len(prices)*len(price_levels)
+        self.P = C/price_level_count
     
     def calcProbability(self, s1, a, s2):
         """
@@ -106,24 +109,35 @@ class RLM:
         self.Pi = policy
         return values, iters
     
-    def test(self, df_test):
+    def test(self, p_test):
+        prices = p_test.copy()
         profits = [0]
         socs = [200]
-        for t in range(len(df_test)):
-            p = int(df_test['Discrete'].iloc[t])
+        
+        d_prices = p_test.copy()
+        for i in range(self.n_levels):
+            if i < self.n_levels-1:
+                d_prices.loc[(prices >= self.price_cuts[i]) & (prices < self.price_cuts[i+1])] = self.price_levels[i]
+            else:
+                d_prices.loc[prices >= self.price_cuts[i]] = self.price_levels[i]
+        
+        for t in range(len(prices)):
+            p = np.where(np.round(self.price_levels,2) == np.round(d_prices.iloc[t],2))[0][0]
+            
             s = np.where(self.socs == socs[-1])[0][0]
             
             a = model.Pi[p,s]
-            price = df_test['Spot'].iloc[t]
-            profits.append(profits[-1] + df_test['Spot'].iloc[t] * (-a))
-
+            price = prices.iloc[t]
+            profits.append(profits[-1] + price * (-a))
             socs.append(socs[-1] + a)
         
         return profits, socs
 
-def getPriceLevels(prices,n_levels):
+def getPriceLevels(p_train,n_levels):
+    prices = p_train.copy()
     p = prices.copy()
     price_cuts = np.quantile(prices, np.linspace(0,1,n_levels+1))[:n_levels]
+    
     price_levels = np.zeros(n_levels)
     for i in range(n_levels):
         if i < n_levels-1:
@@ -149,8 +163,8 @@ prices = df.Spot
 t_of_day = df.Hour
 
 
-p_train = prices[:int(len(prices)*(trainsize))]
-p_test = prices[int(len(prices)*(trainsize)):]
+#p_train = prices[:int(len(prices)*(trainsize))]
+#p_test = prices[int(len(prices)*(trainsize)):]
 
 #%%
 """
@@ -175,33 +189,55 @@ medium = df["Spot"].loc[df["Discrete"] == 0].mean()
 low = df["Spot"].loc[df["Discrete"] == -1].mean()
 
 """
-#%%
-n_levels = 5
-df_train = df.iloc[:180*24,:]
-df_test = df.iloc[180*24:200*24,:]
+
+#%% Creation of train and test data set
+train_days = 180
+test_days = 20
+
+df_train = df.iloc[:train_days*24,:]
+df_test = df.iloc[train_days*24:(train_days+test_days)*24,:]
 
 p_train = df_train['Spot']
 p_test = df_test['Spot']
 
-p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_levels)
+#%% Singular tests
+n_l = 3
 
-model = RLM(p_levels)
+p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_l)
+
+model = RLM(p_levels, p_cuts)
 model.calcPmatrix(p_trains, p_levels)
 
-values, iters = model.valueIter(gamma=0.99)
+values, iters = model.valueIter(gamma=0.99,maxIter=1000)
 
-
-
-#P = calcPmatrix(df)
-
-#%% Testing 
-profits, socs = model.test(df)
+profits, socs = model.test(p_test)
 
 plt.plot(profits)
 plt.show()
 
-plt.plot(socs)
-plt.show()
+#P = calcPmatrix(df)
+
+#%% Testing 
+gammas = np.linspace(0.99,0.999,12-3)
+
+for ix, n_lev in enumerate(range(3,12)):
+    p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_lev)
+    
+    model = RLM(p_levels, p_cuts)
+    model.calcPmatrix(p_trains, p_levels)
+
+    values, iters = model.valueIter(gamma=gammas[ix],maxIter=1000)
+
+    profits, socs = model.test(p_test)
+    plt.title(str("Number of price categories/levels: " + str(n_lev)))
+    plt.scatter(np.arange(len(p_test)),p_test,color='black',alpha=0.1,s=0.1)
+    plt.plot(profits)
+    plt.ylabel("Total profit")
+    plt.xlabel("Hour of trading in test market")
+    plt.show()
+
+#plt.plot(socs)
+#plt.show()
 
 
 
