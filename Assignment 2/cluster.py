@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 #from sklearn.model_selection import train_test_split
 
 #%%
-class RM:    
+class RLM:    
     
     def __init__(self, socs = np.linspace(0,500,6), actions = np.array([-100,0,100])):
         self.socs = socs
@@ -98,12 +98,6 @@ class RM:
         self.V = values
         self.Pi = policy
         return values, iters
-    
-    def optPolicy(self):
-        self.pi = np.zeros((self.levels, self.n_socs))
-        for p in range(self.levels):
-            for s in range(self.n_socs):
-                self.pi[p,s] = np.argmax(self.V[p,s])
 
 
 #%%
@@ -121,7 +115,9 @@ t_of_day = df.Hour
 p_train = prices[:int(len(prices)*(trainsize))]
 p_test = prices[int(len(prices)*(trainsize)):]
 
+#%%
 soc = np.linspace(0, 500, 6)
+actions = np.array([-100,0,100])
 price_levels = np.quantile(prices,[1/3,2/3])
 
 df["Discrete"] = df["Spot"]
@@ -140,12 +136,27 @@ high = df["Spot"].loc[df["Discrete"] == 1].mean()
 medium = df["Spot"].loc[df["Discrete"] == 0].mean()
 low = df["Spot"].loc[df["Discrete"] == -1].mean()
 
-actions = np.array([-100,0,100])
 
-model = RM()
-model.calcPmatrix(df)
+#%%
+df_train = df.iloc[:180*24,:]
+df_test = df.iloc[180*24:200*24,:]
+
+p_train = df_train['Spot']
+p_test = df_test['Spot']
+
+high = df["Spot"].loc[df["Discrete"] == 1].mean()
+medium = df["Spot"].loc[df["Discrete"] == 0].mean()
+low = df["Spot"].loc[df["Discrete"] == -1].mean()
+
+model = RLM()
+model.calcPmatrix(df_train)
+
+
+#model.calcPmatrix(df)
+
 values, iters = model.valueIter()
-model.optPolicy()
+
+
 
 #P = calcPmatrix(df)
 
