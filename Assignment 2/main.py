@@ -66,7 +66,7 @@ n_l = 30
 p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_l)
 
 model = RLM_discrete(p_levels, p_cuts)
-model.calcPmatrix(p_trains, p_levels)
+model.calcPmatrix(p_trains)
 
 values, iters = model.valueIter(gamma=0.9999, maxIter=1000)
 
@@ -86,7 +86,7 @@ for ix, n_lev in enumerate(range(3, 12)):
     p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_lev)
 
     model = RLM_discrete(p_levels, p_cuts)
-    model.calcPmatrix(p_trains, p_levels)
+    model.calcPmatrix(p_trains)
 
     values, iters = model.valueIter(gamma=gammas[ix], maxIter=1000)
 
@@ -131,7 +131,7 @@ plt.show()
 #%% Fitted value iteration object
 
 model_cont = RLM_continuous()
-model_cont.fitted_value_iteration(p_train, nSamples = 2000, maxIter=1000, gamma = 0.96)
+model_cont.fitted_value_iteration(p_train, nSamples = 2000, maxIter=100, gamma = 0.96)
 model_cont.test(p_test, plot = True)
 
 
@@ -156,8 +156,8 @@ The action has no impact on the price, as we are a price-taker in the market.
 Therefore we can model the price as a regression based on previous price states. """
 n_l = 30
 p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_l)
-model = RLM(p_levels, p_cuts)
-model.calcPmatrix(p_trains, p_levels)
+model = RLM_discrete(p_levels, p_cuts)
+model.calcPmatrix(p_trains)
 values, iters = model.valueIter(gamma=1, maxIter=1000)
 
 V = model.V.T
@@ -189,94 +189,6 @@ plt.plot(socs)
 plt.ylabel("Total profit")
 plt.xlabel("Hour of trading in test market")
 plt.show()
-
-
-#%% Fitted value iteration - implemented in class (object)
-y = p_train.values
-
-minsoc = 0
-maxsoc = 500
-meansoc = 250
-
-minprice = min(y)
-maxprice = max(y)
-meanprice = np.mean(y)
-
-
-def phi(s):
-    # s.append(s[1]**2)
-    # s.append(np.log(s[0]))
-    return s
-
-
-ones = np.ones(len(y))
-hour_1 = np.insert(y[:-1], 0, y[0])
-hour_2 = np.insert(hour_1[:-1], 0, hour_1[0])
-hour_1_sq = np.square(hour_1)
-hour_2_sq = np.square(hour_2)
-
-X = np.array([ones, hour_1, hour_2]).T
-
-beta = cf_fit(X, y)
-# beta_reg = l2_fit(X,y,30)
-y_prime = cf_predict(beta, X)
-
-rmse = mse(y_prime, y, squared=False)
-
-actions = [-100, 0, 100]
-n = 500
-t_samples = [random.randint(0, len(y) - 1) for i in range(n)]
-samples = [[random.randint(0, 5) * 100, y[t_samples[i]]] for i in range(n)]
-theta = np.zeros(2)
-yy = np.zeros(n)
-gamma = 0.999
-maxIter = 100
-iters = 0
-
-while True:
-    iters += 1
-    if iters > maxIter: break
-    print("Iteration: ", iters)
-    for i in range(n):
-        q = np.zeros(len(actions))
-        for ix, a in enumerate(actions):
-            s_prime = [samples[i][0] + a, X[t_samples[i]] @ beta]
-            if s_prime[0] > 500 or s_prime[0] < 0:
-                R = -np.inf
-            else:
-                R = - a * samples[i][1]
-            q[ix] = R + gamma * (phi(s_prime) @ theta)
-        yy[i] = max(q)
-    theta = cf_fit(phi(samples), yy)
-
-""" Test """
-actions = [-100, 0, 100]
-socs = [200]
-profits = [0]
-for t in range(len(p_test)):
-    p = p_test.iloc[t]
-
-    s = socs[-1]
-
-    V = []
-    for a in actions:
-        if s + a > 500 or s + a < 0:
-            V.append(-np.inf)
-        else:
-            V.append(phi(np.array([s, p])) @ theta - p * a)
-    a = actions[np.argmax(V)]
-
-    profits.append(profits[-1] + p * (-a))
-    socs.append(socs[-1] + a)
-
-plt.title(str("\'Continuous\' pricing: "))
-plt.scatter(np.arange(len(p_test)), p_test, color='black', alpha=0.1, s=0.1)
-plt.plot(np.array(profits) / 1000)
-plt.plot(socs)
-plt.ylabel("Total profit")
-plt.xlabel("Hour of trading in test market")
-plt.show()
-
 
 
 
