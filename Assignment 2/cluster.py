@@ -4,9 +4,30 @@ import os
 import matplotlib.pyplot as plt
 import gurobipy as gp
 from gurobipy import GRB
-#from sklearn.model_selection import train_test_split
 
-def getPriceLevels(p_train,n_levels):
+
+def cf_fit(X, y):
+    """ Closed form predict """
+    XT = np.transpose(X)
+    return np.linalg.inv(XT @ X) @ XT @ y
+
+
+def cf_predict(beta, X):
+    """ Closed form fit """
+    return X @ beta
+
+
+def getPriceLevels(p_train, n_levels):
+    """
+    Computes the quantiles of the price data set given
+    and returns the prices changed to the mean of the price level they are in.
+    :param p_train: prices from training data (pd.Series)
+    :param n_levels: number of desired price levels/quantiles
+    :return:
+            prices: Prices changed to the mean of each quantile.
+            price_levels: The price level of each quantile
+            price_cuts: The actual quantile values, which the prices have been divided by.
+    """
     prices = p_train.copy()
     p = prices.copy()
     price_cuts = np.quantile(prices, np.linspace(0,1,n_levels+1))[:n_levels]
@@ -25,8 +46,8 @@ def getPriceLevels(p_train,n_levels):
 def optimalBidding(p_test):
     T = len(p_test)
     
-    model = gp.Model("Optimal Bidding") 
-    
+    model = gp.Model("Optimal Bidding")
+
     p = model.addVars(T, lb=-100, ub=100, name='Charging rate')
     soc = model.addVars(T, lb=0, ub=500, name='SOC')
     
@@ -36,20 +57,18 @@ def optimalBidding(p_test):
     for t in range(T-1):
         model.addConstr(soc[t+1] == soc[t] + p[t+1])
     model.addConstr(soc[T-1] == 200)
-    
+
     model.optimize()
-    
+
     SOC = []
     p_ch = []
     for t in range(T):
         SOC.append(soc[t].x)
         p_ch.append(p[t].x)
-    
-    return model.objVal, SOC, p_ch
-    
-#if __name__ == "__main__":
 
-    
+    return model.objVal, SOC, p_ch
+
+
 
 
 
