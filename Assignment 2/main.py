@@ -97,11 +97,32 @@ for ix, n_lev in enumerate(range(3, 12)):
 # plt.show()
 
 #%% Optimal bidding 
+opt_profits, opt_socs, opt_p_ch = optimalBidding(p_test)
 
-opt_profits, opt_socs = optimalBidding(p_test) 
+opt_profits_cumulated = [0]
+for t in range(1,len(p_test)):
+    opt_profits_cumulated.append(opt_profits_cumulated[t-1] + opt_p_ch[t]*p_test.iloc[t])
 
+plt.plot(opt_profits_cumulated)    
 
+#%% Plot comparing cumulated profits
+fig, ax1 = plt.subplots()
 
+color = ['tab:red', 'tab:blue']
+ax1.set_xlabel('time (h)')
+ax1.set_ylabel('Cumulated profits')
+ax1.plot(opt_profits_cumulated, color=color[0])
+ax1.plot(profits, color=color[1])
+
+ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+color = 'tab:grey'
+ax2.set_ylabel('Prices', color=color)  # we already handled the x-label with ax1
+ax2.plot(p_test.values, color=color, alpha=0.3)
+ax2.tick_params(axis='y', labelcolor=color)
+
+fig.tight_layout()  # otherwise the right y-label is slightly clipped
+plt.show()
 
 
 

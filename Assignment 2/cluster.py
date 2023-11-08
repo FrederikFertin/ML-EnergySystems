@@ -40,10 +40,12 @@ def optimalBidding(p_test):
     model.optimize()
     
     SOC = []
+    p_ch = []
     for t in range(T):
         SOC.append(soc[t].x)
+        p_ch.append(p[t].x)
     
-    return model.objVal, SOC
+    return model.objVal, SOC, p_ch
     
 #if __name__ == "__main__":
 
