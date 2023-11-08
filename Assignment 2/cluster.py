@@ -135,6 +135,22 @@ class RLM:
         
         return profits, socs
 
+def cf_fit(X, y):
+    """ Closed form predict """
+    XT = np.transpose(X)
+    return np.linalg.inv(XT @ X) @ XT @ y
+
+
+def cf_predict(beta, X):
+    """ Closed form fit """
+    return X @ beta
+
+def l2_fit(X, y, lambda_):
+    """ Fitting beta values using L2 regularization """
+    XT = np.transpose(X)
+    N = np.shape(X)[1]
+    return np.linalg.inv(XT @ X + lambda_*np.eye(N)) @ XT @ y
+
 def getPriceLevels(p_train,n_levels):
     prices = p_train.copy()
     p = prices.copy()
