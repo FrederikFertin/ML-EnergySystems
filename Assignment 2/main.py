@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-from cluster import RLM, getPriceLevels
+from rlm_discrete import RLM_discrete
+from cluster import getPriceLevels, optimalBidding
 
 # %%
 trainsize = 0.75
@@ -57,7 +58,7 @@ n_l = 3
 
 p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_l)
 
-model = RLM(p_levels, p_cuts)
+model = RLM_discrete(p_levels, p_cuts)
 model.calcPmatrix(p_trains, p_levels)
 
 values, iters = model.valueIter(gamma=0.99, maxIter=1000)
@@ -77,7 +78,7 @@ gammas = np.linspace(0.99, 0.9999, 12 - 3)
 for ix, n_lev in enumerate(range(3, 12)):
     p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_lev)
 
-    model = RLM(p_levels, p_cuts)
+    model = RLM_discrete(p_levels, p_cuts)
     model.calcPmatrix(p_trains, p_levels)
 
     values, iters = model.valueIter(gamma=gammas[ix], maxIter=1000)
@@ -95,8 +96,9 @@ for ix, n_lev in enumerate(range(3, 12)):
 # plt.plot(socs)
 # plt.show()
 
+#%% Optimal bidding 
 
-
+opt_profits, opt_socs = optimalBidding(p_test) 
 
 
 
