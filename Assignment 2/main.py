@@ -116,7 +116,7 @@ plot.plotCompareProfits(
     profits2=profits,
     labels=["Optimal","Discreet RLM"],
     title="Comparison of cumulated profits for optimal and discrete RLM",
-    p_test=p_test
+    p_test=p_test,
     )
 
 #%% Fitted value iteration object

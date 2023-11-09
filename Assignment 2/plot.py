@@ -21,6 +21,7 @@ def plotCompareProfits(profits1, profits2=None, profits3=None, p_test=[], labels
         ax2.plot(p_test.values, color=color, alpha=0.3)
         ax2.tick_params(axis='y', labelcolor=color)
     
+    plt.title(title)
     ax1.legend()
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     plt.show()
