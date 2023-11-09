@@ -4,12 +4,8 @@ import os
 import matplotlib.pyplot as plt
 from rlm_discrete import RLM_discrete
 from rlm_continuous import RLM_continuous
-from cluster import getPriceLevels, optimalBidding, cf_fit, cf_predict
-from sklearn.metrics import mean_squared_error as mse
-from sklearn.linear_model import LogisticRegression
-import random
+from functions import getPriceLevels, optimalBidding, cf_fit, continual_test
 import seaborn as sns
-from distfit import distfit
 
 
 #%% Preample
@@ -126,26 +122,60 @@ ax2.plot(p_test.values, color=color, alpha=0.3)
 ax2.tick_params(axis='y', labelcolor=color)
 
 fig.tight_layout()  # otherwise the right y-label is slightly clipped
+plt.title(r"Profit generation of cont. model with $\gamma$ = 0.96")
 plt.show()
 
-#%% Fitted value iteration object
+#%% Fitted value iteration - deterministic
+model_cont = RLM_continuous()
+iters, thetas = model_cont.fitted_value_iteration(p_train, nSamples = 2000, maxIter=100, gamma = 0.96)
+p, s = model_cont.test(p_test, plot = True)
+
+#%% Plot theta 'convergence'
+fig, ax1 = plt.subplots()
+
+color = ['tab:red', 'tab:blue']
+ax1.set_xlabel('Iterations')
+ax1.set_ylabel('Theta SOC weight', color=color[0])
+ax1.plot(thetas[0], color=color[0])
+ax1.tick_params(axis='y', labelcolor=color[0])
+
+ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
+
+color = 'tab:blue'
+ax2.set_ylabel('Theta Price weight', color=color)  # we already handled the x-label with ax1
+ax2.plot(thetas[1], color=color, alpha=1)
+ax2.tick_params(axis='y', labelcolor=color)
+
+fig.tight_layout()  # otherwise the right y-label is slightly clipped
+plt.title(str("Fitted value iteration to obtain " + r'$\theta$' + "-values, " + r'$\gamma$ = 0.96'))
+plt.show()
+
+#%% Fitted value iteration - with k-sampling
+n_lev = 30
+p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_lev)
+model_cont.calc_k_samplers(p_train,p_levels, p_trains)
+model_cont.fitted_value_iteration_k_sampling(p_train, maxIter=100, gamma=0.96, nSamples = 1000)
+p, s = model_cont.test(p_test, plot = True)
+
+#%% Continually updating model
+train_days = 180
+test_days = 50
+length_train = 180 # Good performance
+length_test = 50 # Good performance
+#length_train = 15
+#length_test = 1
 
 model_cont = RLM_continuous()
-model_cont.fitted_value_iteration(p_train, nSamples = 2000, maxIter=100, gamma = 0.96)
-model_cont.test(p_test, plot = True)
+profits, socs = continual_test(df, model_cont, test_days = test_days, length_train = length_train, length_test = length_test)
+model_cont.plot_test_results(profits)
 
+model_cont2 = RLM_continuous(sampling = True)
+profits, socs = continual_test(df, model_cont2, gamma=0.96, test_days = test_days, length_train = length_train, length_test = length_test)
+model_cont2.plot_test_results(profits)
 
-#%% To be used in k-sampling
-for aLevel in p_levels:
-    p_now = p_train.loc[p_trains==aLevel]
-    p_chooser = (p_trains==aLevel).shift(1)
-    p_chooser[0] = (p_trains==aLevel).iloc[-1]
-    p_next = p_train.loc[p_chooser]
-    p_diff = pd.Series(p_next.values - p_now.values)
-    print(np.mean(p_diff))
-    sns.displot(p_diff, kind='kde', bw_adjust=.5)
-plt.show()
-
+model_disc = RLM_discrete()
+profits, socs = continual_test(df, model_disc, test_days = test_days, length_train = length_train, length_test = length_test, n_levels = 24)
+model_cont.plot_test_results(profits)
 
 
 # %% Continuous state space - additional method
@@ -156,6 +186,17 @@ The action has no impact on the price, as we are a price-taker in the market.
 Therefore we can model the price as a regression based on previous price states. """
 n_l = 30
 p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_l)
+
+# Distributions for each price level used in k-sampling
+for aLevel in p_levels:
+    p_now = p_train.loc[p_trains==aLevel]
+    p_chooser = (p_trains==aLevel).shift(1)
+    p_chooser[0] = (p_trains==aLevel).iloc[-1]
+    p_next = p_train.loc[p_chooser]
+    p_diff = pd.Series(p_next.values - p_now.values)
+    sns.displot(p_diff, kind='kde', bw_adjust=.5)
+plt.show()
+
 model = RLM_discrete(p_levels, p_cuts)
 model.calcPmatrix(p_trains)
 values, iters = model.valueIter(gamma=1, maxIter=1000)

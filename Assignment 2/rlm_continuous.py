@@ -1,10 +1,16 @@
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+import pandas as pd
+
 
 class RLM_continuous:
         
-    def __init__(self, plevels = [0,1,2], p_cuts = [0.5,1.5], socs = np.linspace(0,500,6), actions = np.array([-100,0,100])):
+    def __init__(self, socs = np.linspace(0,500,6), actions = np.array([-100,0,100]), sampling = False):
+        
+        self.model_type = "continuous"
+        self.sampling = sampling
+        
         self.socs = socs
         self.minsoc = min(self.socs)
         self.maxsoc = max(self.socs)
@@ -12,10 +18,6 @@ class RLM_continuous:
         
         self.actions = actions
         self.n_actions = len(self.actions)
-        
-        self.price_cuts = p_cuts
-        self.price_levels = plevels
-        self.n_levels = len(self.price_levels)
         
         self.theta = None
 
@@ -38,7 +40,7 @@ class RLM_continuous:
         
         return X
 
-    def fitted_value_iteration(self, prices_train, nSamples = 500, gamma = 0.999, maxIter = 1000):
+    def fitted_value_iteration(self, prices_train, nSamples = 1000, gamma = 0.96, maxIter = 200):
         y = prices_train.values
         X = self.createX(y)
         
@@ -48,13 +50,16 @@ class RLM_continuous:
         t_samples = [random.randint(0,len(y)-1) for i in range(n)]
         samples = [[random.randint(0,5)*100, y[t_samples[i]]] for i in range(n)]
         theta = np.zeros(len(samples[0]))
+        prev_theta = np.zeros(len(samples[0]))
         yy = np.zeros(n)
         iters = 0
+        
+        thetas = []
         
         while True:
             iters += 1
             if iters > maxIter: break
-            print("Iteration: ", iters)
+            #print("Iteration: ", iters)
             for i in range(n):
                 q = np.zeros(len(self.actions))
                 s = samples[i][0]
@@ -68,11 +73,71 @@ class RLM_continuous:
                     q[ix] = R + gamma * (self.phi(s_prime) @ theta)
                 yy[i] = max(q)
             theta = self.cf_fit(self.phi(samples),yy)
+            if np.array_equal(theta, prev_theta):
+                break
+            prev_theta = theta
+            thetas.append(prev_theta)
         self.theta = theta
+        
+        return iters, np.array(thetas).T
+    
+    def calc_k_samplers(self, prices, p_levels, disc_prices):
+        self.k_samplers = []
+        self.price_levels = p_levels
+        for aLevel in p_levels:
+            p_now = prices.loc[disc_prices==aLevel]
+            p_chooser = (disc_prices==aLevel).shift(1)
+            p_chooser[0] = (disc_prices==aLevel).iloc[-1]
+            p_next = prices.loc[p_chooser]
+            p_diff = pd.Series(p_next.values - p_now.values)
+            self.k_samplers.append(p_diff + aLevel)
+    
+    def fitted_value_iteration_k_sampling(self, prices_train, nSamples = 100, gamma = 0.96, maxIter = 100, K=50):
+        y = prices_train.values
+        
+        n = nSamples
+        t_samples = [random.randint(0,len(y)-1) for i in range(n)]
+        samples = [[random.randint(0,5)*100, y[t_samples[i]]] for i in range(n)]
+        theta = np.zeros(len(samples[0]))
+        prev_theta = np.zeros(len(samples[0]))
+        yy = np.zeros(n)
+        iters = 0
+        
+        while True:
+            iters += 1
+            if iters > maxIter: break
+            #print("Iteration: ", iters)
+            for i in range(n):
+                q = np.zeros(len(self.actions))
+                s = samples[i][0]
+                p = samples[i][1]
+                level = np.argmin(abs(self.price_levels - p))
+                for ix, a in enumerate(self.actions):
+                    new_s = s+a
+                    if new_s > 500 or new_s < 0:
+                        R = -np.inf
+                    else:
+                        R = - a * p
+                    s_prime = []
+                    sampler = self.k_samplers[level]
+                    
+                    for k in range(K):
+                        s_prime.append([s + a, y[random.randint(0,len(sampler)-1)]])
+                    q[ix] = R + sum(gamma * (self.phi(s_prime) @ theta))/K
+                yy[i] = max(q)
+            theta = self.cf_fit(self.phi(samples),yy)
+            if all(theta == prev_theta):
+                break
+            prev_theta = theta
+        self.theta = theta
+        
         
         return iters
     
-    def plot_test_results(self):
+    def plot_test_results(self, profit_list = None):
+        if profit_list is not None:
+            self.test_profits = profit_list
+        
         plt.title(str("\'Continuous\' pricing: "))
         plt.plot(np.array(self.test_profits))
         #plt.plot(self.socs)
@@ -80,12 +145,12 @@ class RLM_continuous:
         plt.xlabel("Hour of trading in test market")
         plt.show()
     
-    def test(self, p_test, plot = False):
+    def test(self, p_test, plot = False, soc = 200, profit = 0):
         if self.theta.any() == None:
             print("Need to run fitted_value_iteration first to define theta")
         else:
-            profits = [0]
-            socs = [200]
+            profits = [profit]
+            socs = [soc]
             
             for t in range(len(p_test)):
                 p = p_test.iloc[t]
@@ -111,4 +176,5 @@ class RLM_continuous:
                 self.plot_test_results()
             
             return profits, socs
+
     
