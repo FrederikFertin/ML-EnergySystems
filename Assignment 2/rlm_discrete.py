@@ -1,7 +1,8 @@
 import numpy as np
 
+
 class RLM_discrete:    
-    
+
     def __init__(self, plevels=[0,1,2], p_cuts=[0.5,1.5], socs=np.linspace(0,500,6), actions=np.array([-100,0,100])):
         """
         Initialises state and action space as well as a uniform probability 
@@ -14,18 +15,14 @@ class RLM_discrete:
             actions: np.array defining the action space. 
         """
         
+        self.model_type = "discrete"
         self.socs = socs
         self.n_socs = len(self.socs)
         self.actions = actions
         self.n_actions = len(self.actions)
-        self.price_cuts = p_cuts
-        self.setPriceLevels(plevels)
-        self.P = np.ones(
-            (self.n_levels,self.n_levels)
-             ) / self.n_levels
-        self.calcRmatrix()
+        self.setPriceLevels(plevels, p_cuts)
     
-    def setPriceLevels(self, plevels):
+    def setPriceLevels(self, plevels, p_cuts):
         """
         Changes the price levels of the instance. 
         
@@ -35,6 +32,11 @@ class RLM_discrete:
         
         self.price_levels = plevels
         self.n_levels = len(self.price_levels)
+        self.price_cuts = p_cuts
+        self.P = np.ones(
+            (self.n_levels,self.n_levels)
+             ) / self.n_levels
+        self.calcRmatrix()
     
     def displayInfo(self):
         """
@@ -163,7 +165,7 @@ class RLM_discrete:
         
         return values, iters
     
-    def test(self, p_test):
+    def test(self, p_test, soc = 200, profit = 0):
         """
         Tests performance of the model (i.e., the learned policy) by 
         calculating the generated profits when trading in the market given some 
@@ -178,8 +180,8 @@ class RLM_discrete:
         """
         
         prices = p_test.copy()
-        profits = [0]
-        socs = [200]
+        profits = [profit]
+        socs = [soc]
         
         d_prices = p_test.copy()
         for i in range(self.n_levels):
