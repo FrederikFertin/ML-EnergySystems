@@ -6,6 +6,8 @@ from rlm_discrete import RLM_discrete
 from rlm_continuous import RLM_continuous
 from functions import getPriceLevels, optimalBidding, cf_fit, continual_test
 import seaborn as sns
+from distfit import distfit
+import plot
 
 
 #%% Preample
@@ -106,24 +108,13 @@ for t in range(1,len(p_test)):
 plt.plot(opt_profits_cumulated)
 
 #%% Plot comparing cumulated profits
-fig, ax1 = plt.subplots()
-
-color = ['tab:red', 'tab:blue']
-ax1.set_xlabel('time (h)')
-ax1.set_ylabel('Cumulated profits')
-ax1.plot(opt_profits_cumulated, color=color[0])
-ax1.plot(profits, color=color[1])
-
-ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
-
-color = 'tab:grey'
-ax2.set_ylabel('Prices', color=color)  # we already handled the x-label with ax1
-ax2.plot(p_test.values, color=color, alpha=0.3)
-ax2.tick_params(axis='y', labelcolor=color)
-
-fig.tight_layout()  # otherwise the right y-label is slightly clipped
-plt.title(r"Profit generation of cont. model with $\gamma$ = 0.96")
-plt.show()
+plot.plotCompareProfits(
+    opt_profits_cumulated,
+    profits2=profits,
+    labels=["Optimal","Discreet RLM"],
+    title="Comparison of cumulated profits for optimal and discrete RLM",
+    p_test=p_test
+    )
 
 #%% Fitted value iteration - deterministic
 model_cont = RLM_continuous()
@@ -230,14 +221,4 @@ plt.plot(socs)
 plt.ylabel("Total profit")
 plt.xlabel("Hour of trading in test market")
 plt.show()
-
-
-
-
-
-
-
-
-
-
 
