@@ -42,6 +42,7 @@ plt.show()
 
 # %% Testing
 
+#For plotting and comparing many levels
 gammas = np.linspace(0.99, 1, 12 - 3)
 
 for ix, n_lev in enumerate(range(3, 12)):
@@ -56,11 +57,33 @@ for ix, n_lev in enumerate(range(3, 12)):
     del model
 
     plt.title(str("Number of price categories/levels: " + str(n_lev)))
-    plt.scatter(np.arange(len(p_test)), p_test, color='black', alpha=0.1, s=0.1)
+    #plt.scatter(np.arange(len(p_test)), p_test, color='black', alpha=0.1, s=0.1)
     plt.plot(profitss)
     plt.ylabel("Total profit")
     plt.xlabel("Hour of trading in test market")
     plt.show()
+
+# profits_list = []
+# for n_lev in [3,7,11]:
+#     p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_lev)
+
+#     model = RLM_discrete(p_levels, p_cuts)
+#     model.calcPmatrix(p_trains)
+
+#     values, iters = model.valueIter(gamma=0.999, maxIter=1000)
+
+#     profitss, socss = model.test(p_test)
+#     profits_list.append(profitss)
+#     del model
+    
+# plot.plotCompareProfits(
+#     profits1=profits_list[0],
+#     profits2=profits_list[1],
+#     profits3=profits_list[2],
+#     labels=["Price levels: 3","Price levels: 7", "Price levels: 11"],
+#     title="Gamma = 0.99",
+#     p_test=p_test
+#     )
 
 #%% Optimal bidding
 opt_profits, opt_socs, opt_p_ch = optimalBidding(p_test)
