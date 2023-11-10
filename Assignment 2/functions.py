@@ -33,13 +33,17 @@ def getPriceLevels(p_train, n_levels):
     """
     Computes the quantiles of the price data set given
     and returns the prices changed to the mean of the price level they are in.
-    :param p_train: prices from training data (pd.Series)
-    :param n_levels: number of desired price levels/quantiles
-    :return:
+    
+    Args: 
+        p_train: prices from training data (pd.Series)
+        n_levels: number of desired price levels/quantiles
+    
+    Returns:
             prices: Prices changed to the mean of each quantile.
             price_levels: The price level of each quantile
             price_cuts: The actual quantile values, which the prices have been divided by.
     """
+    
     prices = p_train.copy()
     p = prices.copy()
     price_cuts = np.quantile(prices, np.linspace(0,1,n_levels+1))[:n_levels]
@@ -56,6 +60,19 @@ def getPriceLevels(p_train, n_levels):
     return prices, price_levels, price_cuts
 
 def optimalBidding(p_test):
+    """
+    Determines the optimal bidding strategy with perfect knowledge during 
+    the given testing period. 
+    
+    Args: 
+        p_test: pd.DataFrame containing price data for the testing period.
+    
+    Returns: 
+        model.objVal: total profits during testing period.
+        SOC: list of SOC during the testing period.
+        p_ch: list of (dis)charging rates during testing period. 
+    """
+    
     T = len(p_test)
     
     model = gp.Model("Optimal Bidding")

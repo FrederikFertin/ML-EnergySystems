@@ -8,7 +8,6 @@ from functions import getPriceLevels, optimalBidding, cf_fit, continual_test, cr
 import seaborn as sns
 import plot
 
-
 #%% Preample
 cwd = os.getcwd()
 filename = os.path.join(cwd, 'Prices.csv')
@@ -16,6 +15,11 @@ df = pd.read_csv(filename)
 df["Hour"] = df.index.values % 24
 prices = df.Spot
 t_of_day = df.Hour
+
+#%% Plot entire price data set 
+_, ls, p_cuts = getPriceLevels(prices, 3)
+plot.plotPriceData(prices, p_cuts, train_length=180, test_length=50)
+
 
 # %% Creation of train and test data set
 train_days = 180
@@ -63,50 +67,33 @@ for ix, n_lev in enumerate(range(3, 12)):
     plt.xlabel("Hour of trading in test market")
     plt.show()
 
-# profits_list = []
-# for n_lev in [3,7,11]:
-#     p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_lev)
+profits_list = []
+for n_lev in [3,7,11]:
+    p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_lev)
 
-#     model = RLM_discrete(p_levels, p_cuts)
-#     model.calcPmatrix(p_trains)
+    model = RLM_discrete(p_levels, p_cuts)
+    model.calcPmatrix(p_trains)
 
-#     values, iters = model.valueIter(gamma=0.999, maxIter=1000)
+    values, iters = model.valueIter(gamma=0.999, maxIter=1000)
 
-#     profitss, socss = model.test(p_test)
-#     profits_list.append(profitss)
-#     del model
+    profitss, socss = model.test(p_test)
+    profits_list.append(profitss)
+    del model
     
-# plot.plotCompareProfits(
-#     profits1=profits_list[0],
-#     profits2=profits_list[1],
-#     profits3=profits_list[2],
-#     labels=["Price levels: 3","Price levels: 7", "Price levels: 11"],
-#     title="Gamma = 0.99",
-#     p_test=p_test
-#     )
-
-#%% Optimal bidding
-opt_profits, opt_socs, opt_p_ch = optimalBidding(p_test)
-
-opt_profits_cumulated = [0]
-for t in range(1,len(p_test)):
-    opt_profits_cumulated.append(opt_profits_cumulated[t-1] + opt_p_ch[t]*p_test.iloc[t])
-
-plt.plot(opt_profits_cumulated)
-
-#%% Plot comparing cumulated profits
 plot.plotCompareProfits(
-    opt_profits_cumulated,
-    profits2=profits,
-    labels=["Optimal","Discreet RLM"],
-    title="Comparison of cumulated profits for optimal and discrete RLM",
-    p_test=p_test,
-    )
+    profits_list,
+    labels=["Price levels: 3","Price levels: 7", "Price levels: 11"],
+    title="Gamma = 0.99",
+    p_test=p_test
+)
+
+# Choose the model with 11 price levels for future reference
+profits_discrete = profits_list[2]
 
 #%% Fitted value iteration - deterministic
 model_cont = RLM_continuous()
 iters, thetas = model_cont.fitted_value_iteration(p_train, nSamples = 2000, maxIter=100, gamma = 0.96)
-p, s = model_cont.test(p_test, plot = True)
+profits_cont_deter, soc_cont_deter = model_cont.test(p_test, plot = True)
 
 #%% Plot theta 'convergence'
 fig, ax1 = plt.subplots()
@@ -133,7 +120,7 @@ n_lev = 30
 p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_lev)
 model_cont.calc_k_samplers(p_train,p_levels, p_trains)
 model_cont.fitted_value_iteration_k_sampling(p_train, maxIter=100, gamma=0.96, nSamples = 1000)
-p, s = model_cont.test(p_test, plot = True)
+profits_cont_sampling, s_cont_sampling = model_cont.test(p_test, plot = True)
 
 #%% Continually updating model
 train_days = 180
@@ -144,16 +131,16 @@ length_test = 50 # Good performance
 #length_test = 1
 
 model_cont = RLM_continuous()
-profits, socs = continual_test(df, model_cont, test_days = test_days, length_train = length_train, length_test = length_test)
-model_cont.plot_test_results(profits)
+profits_, socs = continual_test(df, model_cont, test_days = test_days, length_train = length_train, length_test = length_test)
+model_cont.plot_test_results(profits_)
 
 model_cont2 = RLM_continuous(sampling = True)
-profits, socs = continual_test(df, model_cont2, gamma=0.96, test_days = test_days, length_train = length_train, length_test = length_test)
-model_cont2.plot_test_results(profits)
+profits_, socs = continual_test(df, model_cont2, gamma=0.96, test_days = test_days, length_train = length_train, length_test = length_test)
+model_cont2.plot_test_results(profits_)
 
 model_disc = RLM_discrete()
-profits, socs = continual_test(df, model_disc, test_days = test_days, length_train = length_train, length_test = length_test, n_levels = 24)
-model_cont.plot_test_results(profits)
+profits_, socs = continual_test(df, model_disc, test_days = test_days, length_train = length_train, length_test = length_test, n_levels = 24)
+model_cont.plot_test_results(profits_)
 
 
 # %% Continuous state space - additional method
@@ -208,4 +195,20 @@ plt.plot(socs)
 plt.ylabel("Total profit")
 plt.xlabel("Hour of trading in test market")
 plt.show()
+
+#%% Optimal bidding
+opt_profits, opt_socs, opt_p_ch = optimalBidding(p_test)
+
+opt_profits_cumulated = [0]
+for t in range(1,len(p_test)):
+    opt_profits_cumulated.append(opt_profits_cumulated[t-1] + opt_p_ch[t]*p_test.iloc[t])
+
+#%% Plot comparing cumulated profits
+plot.plotCompareProfits(
+    [opt_profits_cumulated, profits_list[2], p],
+    labels=["Optimal","Discrete RLM", "Continuous RLM"],
+    title="Comparison of cumulated profits for optimal and discrete RLM",
+    p_test=p_test,
+)
+
 

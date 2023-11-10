@@ -1,24 +1,41 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
-def plotCompareProfits(profits1, profits2=None, profits3=None, p_test=[], labels=None, title=''):
+def plotPriceData(prices, p_cuts, train_length=180, test_length=50):
+    t = np.arange(len(prices))
+    plt.figure()
+    plt.scatter(t, prices, alpha=0.3, s=0.5)
+    plt.plot(t, np.ones(len(t))*p_cuts[1], linestyle='--', color='black')
+    plt.plot(t, np.ones(len(t))*p_cuts[2], linestyle='--', color='black')
+    
+    train1_end = (train_length*24)/len(t)
+    test1_end = train1_end + (test_length*24)/len(t)
+    train2_end = (8760 + train_length*24)/len(t)
+    test2_end = train2_end + (test_length*24)/len(t)
+    
+    plt.axhspan(prices.min(), prices.max(), 0, train1_end, color='grey', alpha=0.3)
+    plt.axhspan(prices.min(), prices.max(), train1_end, test1_end, color='grey', alpha=0.7)
+    plt.axhspan(prices.min(), prices.max(), (8760/len(t)), train2_end, color='grey', alpha=0.3)
+    plt.axhspan(prices.min(), prices.max(), train2_end, test2_end, color='grey', alpha=0.7)
+    plt.xlim(t[0], t[-1])
+    plt.ylim(prices.min(),prices.max())
+    
+def plotCompareProfits(profits, p_test=[], labels=None, title=''):
     
     fig, ax1 = plt.subplots()
 
-    color = ['tab:red', 'tab:blue', 'tab:green']
+    # color = ['tab:red', 'tab:blue', 'tab:green']
     ax1.set_xlabel('time (h)')
     ax1.set_ylabel('Cumulated profits')
-    ax1.plot(profits1, color=color[0], label=labels[0])
-    if (profits2 != None):
-        ax1.plot(profits2, color=color[1], label=labels[1])
-    if (profits3 != None):
-        ax1.plot(profits3, color=color[2], label=labels[2])
+    for i in range(len(profits)):    
+        ax1.plot(profits[i], label=labels[i], linewidth=0.7)
     
     if len(p_test) > 0:
         ax2 = ax1.twinx()  # instantiate a second axes that shares the same x-axis
     
         color = 'tab:grey'
         ax2.set_ylabel('Prices', color=color)  # we already handled the x-label with ax1
-        ax2.plot(p_test.values, color=color, alpha=0.3)
+        ax2.plot(p_test.values, color=color, linewidth=0.7, alpha=0.3)
         ax2.tick_params(axis='y', labelcolor=color)
     
     plt.title(title)
