@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import gurobipy as gp
 from gurobipy import GRB
 
-def create_train_test(df, train_days, len_of_train = 7, len_of_test = 1,d=0):
+def create_train_test(df, train_days, len_of_train = 7, len_of_test = 1, d=0):
     df_train = df.iloc[:(train_days + d) * 24, :]
     p_train = df_train['Spot']
     # Train only on one week of price data
@@ -17,6 +17,16 @@ def create_train_test(df, train_days, len_of_train = 7, len_of_test = 1,d=0):
     
     return p_train, p_test
 
+def create_second_train_test(prices, train_days, test_days):
+    
+    train_end = 8760+train_days*24
+    test_end = train_end + test_days*24
+    
+    p_train2 = prices[8760:train_end]
+    p_test2 = prices[train_end:test_end]
+    
+    return p_train2, p_test2
+    
 
 def cf_fit(X, y):
     """ Closed form predict """
@@ -116,7 +126,7 @@ def continual_test(df, model, gamma = None, maxIter = 100, train_days = 180, tes
         return profits, socs
     elif model.model_type == "continuous":
         if gamma == None:
-            gamma = 0.96
+            gamma = 0.952
         for d in range(0,test_days,length_test):
             print(d/length_test+1 ,"/", test_days/length_test)
             p_train, p_test = create_train_test(df, train_days, len_of_train = length_train, len_of_test = length_test, d=d)
