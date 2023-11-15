@@ -16,7 +16,7 @@ df["Hour"] = df.index.values % 24
 prices = df.Spot
 t_of_day = df.Hour
 
-#%% Plot entire price data set 
+#%% Plot entire price data set
 _, _, p_cuts = getPriceLevels(prices, 3)
 plot.plotPriceData(prices, p_cuts, train_length=180, test_length=50)
 
@@ -62,7 +62,7 @@ for n_lev in [3,7,11]:
     profitss, socss = model.test(p_test)
     profits_list.append(profitss)
     del model
-    
+
 plot.plotCompareProfits(
     profits_list,
     labels=["Price levels: 3","Price levels: 7", "Price levels: 11"],
@@ -82,7 +82,7 @@ profits_cont_deter, soc_cont_deter = model_cont.test(p_test, plot = True)
 plot.plotThetaConvergence(thetas)
 
 #%% Fitted value iteration - with k-sampling
-n_lev = 30
+n_lev = 20
 p_trains, p_levels, p_cuts = getPriceLevels(p_train, n_lev)
 model_cont.calc_k_samplers(p_train,p_levels, p_trains)
 model_cont.fitted_value_iteration_k_sampling(p_train, maxIter=100, gamma=0.96, nSamples = 1000)
@@ -104,6 +104,23 @@ model_disc = RLM_discrete()
 profits_disc_online, socs = continual_test(df, model_disc, test_days = test_days, length_train = length_train, length_test = length_test, n_levels = 6)
 model_cont.plot_test_results(profits_disc_online)
 
+model_disc2 = RLM_discrete()
+profits, socs = continual_test(df, model_disc, test_days = test_days, length_train = train_days, length_test = test_days, n_levels = 24)
+model_cont.plot_test_results(profits)
+
+p_train, p_test = create_train_test(df, train_days, len_of_train = train_days, len_of_test = test_days)
+opt_profits, opt_socs, opt_p_ch = optimalBidding(p_test)
+opt_profits_cumulated = [0]
+for t in range(1,len(p_test)):
+    opt_profits_cumulated.append(opt_profits_cumulated[t-1] + opt_p_ch[t]*p_test.iloc[t])
+
+plot.plotCompareProfits(
+    opt_profits_cumulated,
+    profits2=profits,
+    labels=["Optimal","Discreet RLM"],
+    title="Comparison of cumulated profits for optimal and discrete RLM",
+    p_test=p_test
+    )
 
 # %% Continuous state space - additional method
 """ We acknowledge that the prices are a real life continuous variable.
@@ -167,8 +184,8 @@ for t in range(1,len(p_test)):
 
 #%% Plot comparing cumulated profits 2021
 plot.plotCompareProfits([
-    opt_profits_cumulated, 
-    profits_discrete, 
+    opt_profits_cumulated,
+    profits_discrete,
     profits_cont_deter,
     profits_disc_online[:-50],
     ],
@@ -194,7 +211,7 @@ model_cont_2022 = RLM_continuous()
 iters, thetas = model_cont.fitted_value_iteration(p_train2, nSamples = 2000, maxIter=200, gamma = 0.94)
 profits_cont_deter_2022, soc_cont_deter_2022 = model_cont.test(p_test2, plot=True)
 
-#%% Online discrete model 
+#%% Online discrete model
 length_train = 1 # Good performance
 length_test = 1 # Good performance
 
@@ -211,8 +228,8 @@ for t in range(1,len(p_test2)):
 
 #%% Plot comparing cumulated profits 2021
 plot.plotCompareProfits([
-    opt_profits_cumulated_2022, 
-    profits_disc_2022, 
+    opt_profits_cumulated_2022,
+    profits_disc_2022,
     profits_cont_deter_2022,
     profits_disc_online_2022[:-50],
     # profits_cont_deter_online_2022,
