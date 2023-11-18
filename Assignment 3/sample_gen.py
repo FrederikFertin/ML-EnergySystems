@@ -3,8 +3,8 @@ import numpy as np
 import random
 
 def generate_samples(multipliers = [0.5,1,2,5]):
-    demand = pd.read_csv('./Demand.csv')
-    samples = pd.read_csv('./Samples.csv', header=None)
+    demand = pd.read_csv('system_data/demand.csv')
+    samples = pd.read_csv('system_data/samples.csv', header=None)
     demand = np.vstack([list(map(float, row[0].split(';'))) for row in demand.values])
     P_load_max = np.max(demand,axis=0)
     samples = samples*P_load_max
