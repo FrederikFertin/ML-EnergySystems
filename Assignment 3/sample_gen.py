@@ -11,7 +11,8 @@ def generate_samples(multipliers=[0.5, 1, 2, 5]):
     samples = samples*p_load_max
     samples_dict = {}
     for i in multipliers:
-        samples_dict[i] = samples.copy()*i
+        #samples_dict[i] = samples.copy()*i
+        samples_dict[i] = pick_samples(samples.copy()*i)
     return samples_dict
 
 
