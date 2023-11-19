@@ -2,6 +2,7 @@ from collections import defaultdict
 import numpy as np
 import gurobipy as grb
 import pandas as pd
+from gurobipy import GRB
 
 #%% Load bus system
 pmax = pd.read_csv('./pgmax.csv')
@@ -56,42 +57,54 @@ ws = model.addVars(n_t, 1, vtype=grb.GRB.CONTINUOUS)
 model.update()
 
 #%% Generator constraints 
+lower_gen_limit_constraints = {}
+upper_gen_limit_constraints = {}
+ramp_up_limit_constraints = {}
+ramp_down_limit_constraints = {}
+turn_on_constraints = {}
+min_on_time_constraints = {}
+min_off_time_constraints = {}
+
 for t in range(n_t):
     for j in range(n_g):
         # Constraints limiting the production at each generator based on min/max and whether the gen is on.
-        model.addConstr(p[j,t] <= pmax.iloc[j].item() *b[j,t])
-        model.addConstr(p[j,t] >= pmin.iloc[j].item() *b[j,t])
+        upper_gen_limit_constraints[t,j] = model.addConstr(p[j,t] <= pmax.iloc[j].item() *b[j,t])
+        lower_gen_limit_constraints[t,j] = model.addConstr(p[j,t] >= pmin.iloc[j].item() *b[j,t])
         if t >= 1:
             # Ramp-up limit:
-            model.addConstr(p[j,t]- p[j,t-1] <= ru.iloc[j].item())
+            ramp_up_limit_constraints[t,j] = model.addConstr(p[j,t]- p[j,t-1] <= ru.iloc[j].item())
             # Ramp-down limit:
-            model.addConstr(p[j,t-1]- p[j,t] <= ru.iloc[j].item())
+            ramp_down_limit_constraints[t,j] = model.addConstr(p[j,t-1]- p[j,t] <= ru.iloc[j].item())
             # u[j,t] == 1 if the generator started in hour t.
-            model.addConstr(u[j,t] >= b[j,t]-b[j,t-1])
+            turn_on_constraints[t,j] = model.addConstr(u[j,t] >= b[j,t]-b[j,t-1])
             
             # The minimal number of hours each generator should run if started.
             min_on_time = min(t + UT.iloc[j].item() - 1, n_t)
             for tau in range(t, min_on_time):
-                model.addConstr(b[j, tau] >= b[j, t] - b[j, t - 1])
+                min_on_time_constraints[t,j] = model.addConstr(b[j, tau] >= b[j, t] - b[j, t - 1])
             
             # The minimal number of hours each generator should be off if stopped.
             min_off_time = min(t + DT.iloc[j].item() - 1, n_t)
             for tau in range(t, min_off_time):
-                model.addConstr(1 - b[j, tau] >= b[j, t - 1] - b[j, t])
+                min_off_time_constraints[t,j] = model.addConstr(1 - b[j, tau] >= b[j, t - 1] - b[j, t])
 
 #%% Supply & Demand constraint
+balance_constraints = {}
 for t in range(n_t):
     # The total production during each hour needs to match the total demand.
-    model.addConstr(sum(p[j,t] for j in range(n_g)) == sum(demand[t, i] for i in range(n_load)))
+    balance_constraints[t] = model.addConstr(sum(p[j,t] for j in range(n_g)) == sum(demand[t, i] for i in range(n_load)))
 model.update()
 
 #%% Line loading constraints
+upper_line_limit_constraints = {}
+lower_line_limit_constraints = {}
 for t in range(n_t):
     for i in range(n_line):
         # The expression for the total load on each line in the network.
         # Based on the positive flow added from the generators and the negative flow added from the loads.
         expr = sum(Hg[i, j] * p[j, t] for j in range(n_g)) - sum(Hl[i, j] * demand[t,j] for j in range(n_load))
-        model.addConstr(expr <= fmax.iloc[i].item())
+        upper_line_limit_constraints[t,i] = model.addConstr(expr <= fmax.iloc[i].item())
+        lower_line_limit_constraints[t,i] = model.addConstr(expr >= -fmax.iloc[i].item())
 
 #%% Model Objective
 # The objective is to minimize the cost of power and start-up costs.
@@ -107,5 +120,43 @@ opt = model.optimize()
 for t in range(1):
     for j in range(n_g):
         print(p[j, t].x)
+
+#%% Save active constraints 
+congested_lines = np.zeros((n_t,n_line))
+for t in range(n_t):
+    for i in range(n_line):
+        if upper_line_limit_constraints[t,i].Pi != 0  or lower_line_limit_constraints[t,i].Pi != 0:
+            congested_lines[t,i] = 1
+        else:
+            congested_lines[t,i] = 0
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
