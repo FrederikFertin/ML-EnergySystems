@@ -5,18 +5,18 @@ import pandas as pd
 from gurobipy import GRB
 
 #%% Load bus system
-pmax = pd.read_csv('./pgmax.csv')
-pmin = pd.read_csv('./pgmin.csv')
-ru = pd.read_csv('./ramp.csv')
-UT = pd.read_csv('./lu.csv')
-DT = pd.read_csv('./ld.csv')    
-demand = pd.read_csv('./Demand.csv')   
-c_op = pd.read_csv('./cost_op.csv') 
-c_st = pd.read_csv('./cost_st.csv') 
-PTDF = pd.read_csv('./PTDF.csv') 
-busgen = pd.read_csv('./busgen.csv')
-busload = pd.read_csv('./busload.csv')
-fmax = pd.read_csv('./fmax.csv')
+pmax = pd.read_csv('system_data/pgmax.csv')
+pmin = pd.read_csv('system_data/pgmin.csv')
+ru = pd.read_csv('system_data/ramp.csv')
+UT = pd.read_csv('system_data/lu.csv')
+DT = pd.read_csv('system_data/ld.csv')
+demand = pd.read_csv('system_data/demand.csv')
+c_op = pd.read_csv('system_data/cost_op.csv')
+c_st = pd.read_csv('system_data/cost_st.csv')
+PTDF = pd.read_csv('system_data/PTDF.csv')
+busgen = pd.read_csv('system_data/busgen.csv')
+busload = pd.read_csv('system_data/busload.csv')
+fmax = pd.read_csv('system_data/fmax.csv')
 
 
 PTDF = pd.DataFrame(PTDF)
