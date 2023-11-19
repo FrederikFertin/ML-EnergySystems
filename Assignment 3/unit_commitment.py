@@ -1,6 +1,6 @@
 from collections import defaultdict
 import numpy as np
-import gurobipy as grb
+import gurobipy as gp
 import pandas as pd
 from gurobipy import GRB
 
@@ -11,7 +11,6 @@ def uc(demand):
     ru = pd.read_csv('system_data/ramp.csv')
     UT = pd.read_csv('system_data/lu.csv')
     DT = pd.read_csv('system_data/ld.csv')
-    #demand = pd.read_csv('system_data/demand.csv')
     c_op = pd.read_csv('system_data/cost_op.csv')
     c_st = pd.read_csv('system_data/cost_st.csv')
     PTDF = pd.read_csv('system_data/PTDF.csv')
@@ -23,19 +22,18 @@ def uc(demand):
     PTDF = pd.DataFrame(PTDF)
     busgen = pd.DataFrame(busgen)
     busload = pd.DataFrame(busload)
-    #demand = pd.DataFrame(demand)
+    
 
     # Convert the PTDF and demand string elements to a matrix
     PTDF_matrix = np.vstack([list(map(float, row[0].split(';'))) for row in PTDF.values])
     busgen_matrix = np.vstack([list(map(float, row[0].split(';'))) for row in busgen.values])
     busload_matrix = np.vstack([list(map(float, row[0].split(';'))) for row in busload.values])
-    #demand = np.vstack([list(map(float, row[0].split(';'))) for row in demand.values])
 
     Hg = np.dot(PTDF_matrix, busgen_matrix)
     Hl = np.dot(PTDF_matrix, busload_matrix)
 
     #%% Initialize model
-    model = grb.Model()
+    model = gp.Model()
 
     #%% Model variables
     T = np.shape(demand)[0]
@@ -46,15 +44,15 @@ def uc(demand):
     n_line = np.shape(Hl)[0]
 
     # b denotes on/off status and u denotes start start-up status
-    b = model.addVars(n_g, n_t, vtype=grb.GRB.BINARY)
-    u = model.addVars(n_g, n_t, vtype=grb.GRB.BINARY)
+    b = model.addVars(n_g, n_t, vtype=GRB.BINARY)
+    u = model.addVars(n_g, n_t, vtype=GRB.BINARY)
 
     # how much to produce
-    p = model.addVars(n_g, n_t, vtype=grb.GRB.CONTINUOUS)
+    p = model.addVars(n_g, n_t, vtype=GRB.CONTINUOUS)
 
     # slack variables
-    #ls = model.addVars(n_t, 1, vtype=grb.GRB.CONTINUOUS)
-    #ws = model.addVars(n_t, 1, vtype=grb.GRB.CONTINUOUS)
+    #ls = model.addVars(n_t, 1, vtype=GRB.CONTINUOUS)
+    #ws = model.addVars(n_t, 1, vtype=GRB.CONTINUOUS)
     model.update()
 
     # Generator constraints
@@ -112,30 +110,41 @@ def uc(demand):
     # The objective is to minimize the cost of power and start-up costs.
     expr = sum(c_op.iloc[j].item() * p[j, t] for j in range(n_g) for t in range(n_t)) +\
         sum(c_st.iloc[j].item() * u[j, t] for j in range(n_g) for t in range(n_t))
-    model.setObjective(sense=grb.GRB.MINIMIZE, expr=expr)
+    model.setObjective(sense=GRB.MINIMIZE, expr=expr)
     model.update()
 
     # Model solving
     opt = model.optimize()
-
+    
+    
     # Results loading
-    # Save active constraints
-    congested_lines = np.zeros((n_t, n_line))
-    for t in range(n_t):
-        for i in range(n_line):
-            if upper_line_limit_constraints[t, i].Pi != 0 or lower_line_limit_constraints[t, i].Pi != 0:
-                congested_lines[t, i] = 1
-            else:
-                congested_lines[t, i] = 0
-
-    #creating training data for output y (binary on/off status of generators)
-    y = np.zeros((n_g,n_t))
-    #variables = model.getVars()
-    for g in range(n_g):
+    if model.status == GRB.INFEASIBLE:
+        # handle infeasibility
+        X = np.empty(0)
+        y = np.empty(0)
+        congested_lines = np.empty(0)
+        
+    elif model.status == GRB.OPTIMAL:
+        # Save active constraints
+        congested_lines = np.zeros((n_t, n_line))
         for t in range(n_t):
-            y[g,t] = b[g, t].x
+            for i in range(n_line):
+                #if upper_line_limit_constraints[t, i].Pi != 0 or lower_line_limit_constraints[t, i].Pi != 0:
+                tol = model.params.FeasibilityTol
+                if upper_line_limit_constraints[t, i].Slack <= tol or lower_line_limit_constraints[t, i].Slack >= -tol:
+                    congested_lines[t, i] = 1
+                else:
+                    congested_lines[t, i] = 0
 
-    X = demand
+        #creating training data for output y (binary on/off status of generators)
+        y = np.zeros((n_g,n_t))
+        
+        #variables = model.getVars()
+        for g in range(n_g):
+            for t in range(n_t):
+                y[g,t] = b[g, t].x
 
-    return X, y
+        X = demand
+        
+    return X, y, congested_lines
 
