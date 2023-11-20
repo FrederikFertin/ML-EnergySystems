@@ -53,7 +53,6 @@ def uc(demand):
     # slack variables
     #ls = model.addVars(n_t, 1, vtype=GRB.CONTINUOUS)
     #ws = model.addVars(n_t, 1, vtype=GRB.CONTINUOUS)
-    model.update()
 
     # Generator constraints
     lower_gen_limit_constraints = {}
@@ -93,7 +92,6 @@ def uc(demand):
         # The total production during each hour needs to match the total demand.
         balance_constraints[t] = model.addConstr(
             sum(p[j, t] for j in range(n_g)) == sum(demand[t, i] for i in range(n_load)))
-    model.update()
 
     # Line loading constraints
     upper_line_limit_constraints = {}
@@ -111,7 +109,6 @@ def uc(demand):
     expr = sum(c_op.iloc[j].item() * p[j, t] for j in range(n_g) for t in range(n_t)) +\
         sum(c_st.iloc[j].item() * u[j, t] for j in range(n_g) for t in range(n_t))
     model.setObjective(sense=GRB.MINIMIZE, expr=expr)
-    model.update()
 
     # Model solving
     opt = model.optimize()
