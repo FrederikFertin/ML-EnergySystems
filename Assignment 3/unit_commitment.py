@@ -3,9 +3,10 @@ import numpy as np
 import gurobipy as gp
 import pandas as pd
 from gurobipy import GRB
+import time
 
-def uc(demand):
-    #%% Load bus system
+def uc(demand, b_pred = None, active_lines = None, log = True):
+    # Load bus system
     pmax = pd.read_csv('system_data/pgmax.csv')
     pmin = pd.read_csv('system_data/pgmin.csv')
     ru = pd.read_csv('system_data/ramp.csv')
@@ -23,7 +24,6 @@ def uc(demand):
     busgen = pd.DataFrame(busgen)
     busload = pd.DataFrame(busload)
     
-
     # Convert the PTDF and demand string elements to a matrix
     PTDF_matrix = np.vstack([list(map(float, row[0].split(';'))) for row in PTDF.values])
     busgen_matrix = np.vstack([list(map(float, row[0].split(';'))) for row in busgen.values])
@@ -31,11 +31,15 @@ def uc(demand):
 
     Hg = np.dot(PTDF_matrix, busgen_matrix)
     Hl = np.dot(PTDF_matrix, busload_matrix)
+    
+    env = gp.Env(empty=True)
+    env.setParam("OutputFlag", log)
+    env.start()
+    
+    # Initialize model
+    model = gp.Model("uc",env=env)
 
-    #%% Initialize model
-    model = gp.Model()
-
-    #%% Model variables
+    # Model variables
     T = np.shape(demand)[0]
     n_t = T
 
@@ -46,10 +50,19 @@ def uc(demand):
     # b denotes on/off status and u denotes start start-up status
     b = model.addVars(n_g, n_t, vtype=GRB.BINARY)
     u = model.addVars(n_g, n_t, vtype=GRB.BINARY)
-
+    
     # how much to produce
     p = model.addVars(n_g, n_t, vtype=GRB.CONTINUOUS)
-
+    
+    # Task 6; If predicted variables are given then initialise variables based
+    # on the predicted values. Else initialise as default.
+    if not(b_pred is None):
+        for t in range(n_t):
+            for j in range(n_g):
+                b[j, t].Start = b_pred[j, t]
+                if b_pred[j, t] == 0:
+                    p[j, t].Start = 0
+    
     # slack variables
     #ls = model.addVars(n_t, 1, vtype=GRB.CONTINUOUS)
     #ws = model.addVars(n_t, 1, vtype=GRB.CONTINUOUS)
@@ -98,11 +111,18 @@ def uc(demand):
     lower_line_limit_constraints = {}
     for t in range(n_t):
         for i in range(n_line):
+            # Task 6: If the predicted active constraints is given, then
+            # only include those constraints. Else include all constraints.
+            if not(active_lines is None):
+                flag = active_lines[t, i]
+            else:
+                flag = 1
             # The expression for the total load on each line in the network.
             # Based on the positive flow added from the generators and the negative flow added from the loads.
-            expr = sum(Hg[i, j] * p[j, t] for j in range(n_g)) - sum(Hl[i, j] * demand[t, j] for j in range(n_load))
-            upper_line_limit_constraints[t, i] = model.addConstr(expr <= fmax.iloc[i].item())
-            lower_line_limit_constraints[t, i] = model.addConstr(expr >= -fmax.iloc[i].item())
+            if flag:
+                expr = sum(Hg[i, j] * p[j, t] for j in range(n_g)) - sum(Hl[i, j] * demand[t, j] for j in range(n_load))
+                upper_line_limit_constraints[t, i] = model.addConstr(expr <= fmax.iloc[i].item())
+                lower_line_limit_constraints[t, i] = model.addConstr(expr >= -fmax.iloc[i].item())
 
     # Model Objective
     # The objective is to minimize the cost of power and start-up costs.
@@ -111,8 +131,9 @@ def uc(demand):
     model.setObjective(sense=GRB.MINIMIZE, expr=expr)
 
     # Model solving
+    t_start = time.time()
     opt = model.optimize()
-    
+    t_end = time.time()
     
     # Results loading
     if model.status == GRB.INFEASIBLE:
@@ -124,14 +145,15 @@ def uc(demand):
     elif model.status == GRB.OPTIMAL:
         # Save active constraints
         congested_lines = np.zeros((n_t, n_line))
-        for t in range(n_t):
-            for i in range(n_line):
-                #if upper_line_limit_constraints[t, i].Pi != 0 or lower_line_limit_constraints[t, i].Pi != 0:
-                tol = model.params.FeasibilityTol
-                if upper_line_limit_constraints[t, i].Slack <= tol or lower_line_limit_constraints[t, i].Slack >= -tol:
-                    congested_lines[t, i] = 1
-                else:
-                    congested_lines[t, i] = 0
+        if active_lines is None:
+            for t in range(n_t):
+                for i in range(n_line):
+                    #if upper_line_limit_constraints[t, i].Pi != 0 or lower_line_limit_constraints[t, i].Pi != 0:
+                    tol = model.params.FeasibilityTol
+                    if upper_line_limit_constraints[t, i].Slack <= tol or lower_line_limit_constraints[t, i].Slack >= -tol:
+                        congested_lines[t, i] = 1
+                    else:
+                        congested_lines[t, i] = 0
 
         #creating training data for output y (binary on/off status of generators)
         y = np.zeros((n_g,n_t))
@@ -142,6 +164,8 @@ def uc(demand):
                 y[g,t] = b[g, t].x
 
         X = demand
-        
-    return X, y, congested_lines
+    
+    obj = model.getObjective().getValue()
+    solver_time = t_end - t_start
+    return X, y, congested_lines, obj, solver_time 
 
