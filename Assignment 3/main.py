@@ -14,7 +14,9 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
+import plot
 
+#%% Step 3.1: Create samples
 demand = pd.read_csv('system_data/demand.csv')
 demand = pd.DataFrame(demand)
 demand = np.vstack([list(map(float, row[0].split(';'))) for row in demand.values])
@@ -28,58 +30,69 @@ demands = [demand*multi for multi in multis]
 
 # = sg.generate_samples(multipliers=multis)
 
+#%% Step 3: Create data sets 
 X = []
-y = []
-cl = []
+y_G = []
+y_L = []
 
 for i, sample in enumerate(demands):
     print("Sample ", i)
-    X_sample, y_sample, cong_lines = uc.uc(sample)
+    X_sample, y_G_sample, y_L_sample = uc.uc(sample)
     X.append(X_sample)
-    y.append(y_sample)
-    cl.append(cong_lines)
+    y_G.append(y_G_sample)
+    y_L.append(y_L_sample)
 
 """ Task: Save X, y, and cong_lines in json files as dictionaries so we do not need to rerun """
 
 X_model = np.array(X).reshape(24*n_samples,91)
-y_model = np.array(y).reshape(54,24*n_samples)
+y_G_model = np.array(y_G).reshape(54,24*n_samples)
+y_L_model = np.array(y_L).reshape(186,24*n_samples)
+
+#%% Create altered data set 
+# Initializing lists 
+X_3days = list()
+
+# Create sequences of 3 hours for X
+for h in range(1,len(X_model)-1):
+    X_3days.append(X_model[h-1:h+2].flatten())
+
+# Change the type 
+X_3days = np.asarray(X_3days)
+
+#%% Step 4: Classification
+def classifiers(X, y, clfs=[svm.SVC()], target="G"):
+    accuracies = [{} for clf in clfs]
+    for g in range(len(y)):
+        X_train, X_test, y_train, y_test = train_test_split(X, y[g], test_size=0.2, shuffle=True, random_state=42)    
+        
+        for i in range(len(clfs)):
+            clf = clfs[i]
+            clf.fit(X_train, y_train)
+            y_pred = clf.predict(X_test)
+            rmse = accuracy_score(y_test,y_pred)
+            accuracies[i][str(target + ":" + str(g))] = rmse
+        
+    return accuracies
+
+#%% Predict generators 
+clfs = [svm.SVC(), RandomForestClassifier()]
+acc_G = classifiers(X_3days, y_G_model[:,1:-1], clfs, target="G")
+acc_G_svm, acc_G_rf = acc_G[0], acc_G[1]
+
+#%% Predict active constraints 
+clfs = [svm.SVC(), RandomForestClassifier()]
+acc_L = classifiers(X_3days, y_L_model[:,1:-1], clfs, target="L")
+acc_L_svm, acc_L_rf = acc_L[0], acc_L[1]
 
 """ Task: Predict active constraints """
 
-svm_accuracies = {}
-rf_accuracies = {}
-
-for g in range(len(y_model)):
-    X_train, X_test, y_train, y_test = train_test_split(X_model, y_model[g], test_size=0.2, shuffle=True, random_state=42)    
-    
-    clf = svm.SVC()
-    clf.fit(X_train,y_train)
-    y_pred = clf.predict(X_test)
-    rmse = accuracy_score(y_test,y_pred)
-    svm_accuracies[str("Gen: " + str(g))] = rmse
-    
-    rf = RandomForestClassifier()
-    rf.fit(X_train,y_train)
-    y_pred = rf.predict(X_test)
-    rmse = accuracy_score(y_test,y_pred)
-    rf_accuracies[str("Gen: " + str(g))] = rmse
-
 """ Task: Other classifiers? """
 
-mean_svm = np.mean(list(svm_accuracies.values()))
-mean_rf = np.mean(list(rf_accuracies.values()))
-colors = ['blue','green']
+#%%
+plot.accComparison(acc_G_svm, acc_G_rf)
 
-plt.plot(rf_accuracies.values(), label="RF",color=colors[0])
-plt.axhline(mean_rf,label="Mean RF",color=colors[0], alpha=0.5, linestyle = "--")
-plt.plot(svm_accuracies.values(), label="SVM",color=colors[1])
-plt.axhline(mean_svm,label="Mean SVM",color=colors[1], alpha=0.5, linestyle = "--")
-plt.legend()
-plt.title("Binary classifier accuracies for each generator")
-plt.show()
-plt.plot(y_model.sum(axis=1),label = "Active generator hours")
-plt.legend()
-plt.show()
+plot.accComparison(acc_L_svm, acc_L_rf)
+
 
 # Maybe plot potential relation between cost of gen and accuracy of prediction
 
