@@ -11,9 +11,10 @@ import numpy as np
 import pandas as pd
 import os
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score
 from sklearn import svm
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.utils import resample
 import plot
 import matplotlib.pyplot as plt
 
@@ -27,7 +28,7 @@ demand = np.vstack([list(map(float, row[0].split(';'))) for row in demand.values
 """ Task: Create samples which activates line constraints """
 n_samples = 20
 
-multis = np.linspace(0.5, 1.5, n_samples)
+multis = np.linspace(1.6, 1.65, n_samples)
 
 demands = [demand*multi for multi in multis]
 
@@ -62,9 +63,10 @@ X_file = cwd + "/generated_samples/X_model.csv"
 y_G_file = cwd + "/generated_samples/y_G_model.csv"
 y_L_file = cwd + "/generated_samples/y_L_model.csv"
 
-pd.DataFrame(X_model).to_csv(X_file)
-pd.DataFrame(y_G_model).to_csv(y_G_file)
-pd.DataFrame(y_L_model).to_csv(y_L_file)
+#%% 
+# pd.DataFrame(X_model).to_csv(X_file)
+# pd.DataFrame(y_G_model).to_csv(y_G_file)
+# pd.DataFrame(y_L_model).to_csv(y_L_file)
 
 #%% Load sample training and test data
 X_model = np.asarray(pd.read_csv(X_file,index_col=0))
@@ -72,63 +74,115 @@ y_G_model = np.asarray(pd.read_csv(y_G_file,index_col=0))
 y_L_model = np.asarray(pd.read_csv(y_L_file,index_col=0))
 
 #%% Create altered data set 
+X_1hours = X_model.copy()
+
 # Initializing lists 
-X_3days = list()
+X_3hours = list()
 
 # Create sequences of 3 hours for X
 for h in range(1,len(X_model)-1):
-    X_3days.append(X_model[h-1:h+2].flatten())
+    X_3hours.append(X_model[h-1:h+2].flatten())
 
 # Change the type 
-X_3days = np.asarray(X_3days)
+X_3hours = np.asarray(X_3hours)
+
+#%% Create train, validation, and test sets 
+# 1 hour data set
+# Test splits
+X_1_temp, X_1_test, y_1_G_temp, y_1_G_test = train_test_split(X_1hours, np.transpose(y_G_model), test_size=0.2, shuffle=True, random_state=42)
+_, _, y_1_L_temp, y_1_L_test = train_test_split(X_1hours, np.transpose(y_L_model), test_size=0.2, shuffle=True, random_state=42)    
+
+# Validation splits
+X_1_train, X_1_val, y_1_G_train, y_1_G_val = train_test_split(X_1_temp, y_1_G_temp, test_size=0.25, shuffle=True, random_state=42)
+_, _, y_1_L_train, y_1_L_val = train_test_split(X_1_temp, y_1_L_temp, test_size=0.25, shuffle=True, random_state=42)
+
+y_1_G_train, y_1_G_val, y_1_G_test = np.transpose(y_1_G_train), np.transpose(y_1_G_val), np.transpose(y_1_G_test)
+y_1_L_train, y_1_L_val, y_1_L_test = np.transpose(y_1_L_train), np.transpose(y_1_L_val), np.transpose(y_1_L_test)
+
+# 3 hours in each data point 
+# Test splits
+X_3_temp, X_3_test, y_3_G_temp, y_3_G_test = train_test_split(X_3hours, np.transpose(y_G_model)[1:-1], test_size=0.2, shuffle=True, random_state=42)
+_, _, y_3_L_temp, y_3_L_test = train_test_split(X_3hours, np.transpose(y_L_model)[1:-1], test_size=0.2, shuffle=True, random_state=42)    
+
+# Validation splits
+X_3_train, X_3_val, y_3_G_train, y_3_G_val = train_test_split(X_3_temp, y_3_G_temp, test_size=0.25, shuffle=True, random_state=42)
+_, _, y_3_L_train, y_3_L_val = train_test_split(X_3_temp, y_3_L_temp, test_size=0.25, shuffle=True, random_state=42)
+
+y_3_G_train, y_3_G_val, y_3_G_test = np.transpose(y_3_G_train), np.transpose(y_3_G_val), np.transpose(y_3_G_test)
+y_3_L_train, y_3_L_val, y_3_L_test = np.transpose(y_3_L_train), np.transpose(y_3_L_val), np.transpose(y_3_L_test)
+
+#%% Perform upsampling 
+def upsample(X_train, y_train):
+    X_ones = X_train[y_train.sum(axis=0) >= 1]
+    y_ones = np.transpose(y_train)[y_train.sum(axis=0) >= 1]
+    n_samples = len(X_train) - 2*len(X_ones)
+    X_ones_upsampled = resample(X_ones, random_state=42, n_samples=n_samples, replace=True)
+    y_ones_upsampled = resample(y_ones, random_state=42, n_samples=n_samples, replace=True)
+    
+    return np.append(X_train, X_ones_upsampled, axis=0), np.append(y_train, np.transpose(y_ones_upsampled), axis=1)
+
+X_1_train, y_1_L_train = upsample(X_1_train, y_1_L_train)
 
 #%% Step 4: Classification
-""" Task: Split the dataset up into 3 groups, training, validation, and test
-    to enable proper model evaluation. """
 
-def classifiers(X, y, clfs=[svm.SVC()], target="G"):
+def classifiers(X_train, y_train, X_test, y_test, clfs=[svm.SVC()], target="G"):
     accuracies = [{} for clf in clfs]
     classifiers = [{} for clf in clfs]
     predictions = [{} for clf in clfs]
     
-    for g in range(len(y)):
-        X_train, X_test, y_train, y_test = train_test_split(X, y[g], test_size=0.2, shuffle=True, random_state=42)    
-        
+    for g in range(len(y_train)):
         for i in range(len(clfs)):
             clf = clfs[i]
-            if np.sum(y_train) == 0:
+            if np.sum(y_train[g]) == 0:
                 y_pred = np.zeros(len(X_test))
                 print("Boink", g)
             else:
-                clf.fit(X_train, y_train)
+                clf.fit(X_train, y_train[g])
                 y_pred = clf.predict(X_test)
-            accuracy = accuracy_score(y_test,y_pred)
+            accuracy = accuracy_score(y_test[g],y_pred)
             accuracies[i][str(target + ":" + str(g))] = accuracy
             classifiers[i][str(target + ":" + str(g))] = clf
             predictions[i][str(target + ":" + str(g))] = y_pred
     
-    return accuracies, classifiers, predictions, X_train, X_test
+    return accuracies, classifiers, predictions
+
+# Classifiers to compare 
+clfs = [svm.SVC(), RandomForestClassifier()]
+clfs = [svm.LinearSVC(), RandomForestClassifier()]
+# clfs = [svm.NuSVC(gamma="auto"), RandomForestClassifier()]
+
 
 ### Predict generator status ###
-clfs = [svm.SVC(), RandomForestClassifier()]
-acc_G, clf_G, y_pred_G, X_train, X_test = classifiers(X_3days, y_G_model[:,1:-1], clfs, target="G")
-acc_G_svm, acc_G_rf = acc_G[0], acc_G[1]
-y_pred_G_svm, y_pred_G_rf = y_pred_G[0], y_pred_G[1]
+acc_1_G, clf_1_G, y_1_pred_G = classifiers(X_1_train, y_1_G_train, X_1_val, y_1_G_val, clfs, target="G")
+acc_1_G_svm, acc_1_G_rf = acc_1_G[0], acc_1_G[1]
+y_1_pred_G_svm, y_1_pred_G_rf = y_1_pred_G[0], y_1_pred_G[1]
 
 ### Step 4 - Predict active constraints ###
-clfs = [svm.SVC(), RandomForestClassifier()]
-acc_L, clf_L, y_pred_L, X_train, X_test = classifiers(X_3days, y_L_model[:,1:-1], clfs, target="L")
-acc_L_svm, acc_L_rf = acc_L[0], acc_L[1]
-y_pred_L_svm, y_pred_L_rf = y_pred_L[0], y_pred_L[1]
+acc_1_L, clf_1_L, y_1_pred_L = classifiers(X_1_train, y_1_L_train, X_1_val, y_1_L_val, clfs, target="L")
+acc_1_L_svm, acc_1_L_rf = acc_1_L[0], acc_1_L[1]
+y_1_pred_L_svm, y_1_pred_L_rf = y_1_pred_L[0], y_1_pred_L[1]
+
+### Predict generator status ###
+acc_3_G, clf_3_G, y_3_pred_G = classifiers(X_3_train, y_3_G_train, X_3_val, y_3_G_val, clfs, target="G")
+acc_3_G_svm, acc_3_G_rf = acc_3_G[0], acc_3_G[1]
+y_3_pred_G_svm, y_3_pred_G_rf = y_3_pred_G[0], y_3_pred_G[1]
+
+### Step 4 - Predict active constraints ###
+acc_3_L, clf_3_L, y_3_pred_L = classifiers(X_3_train, y_3_L_train, X_3_val, y_3_L_val, clfs, target="L")
+acc_3_L_svm, acc_3_L_rf = acc_3_L[0], acc_3_L[1]
+y_3_pred_L_svm, y_3_pred_L_rf = y_3_pred_L[0], y_3_pred_L[1]
 
 """ Task: Other classifiers? SVM always predicts 0 currently,
     so something definitely needs to change - or is that the conclusion for
     our linear solver? """
 
 #%% Step 5 - evaluation
-# Evaluation of model accuracies:
-plot.accComparison(acc_G_svm, acc_G_rf)
-plot.accComparison(acc_L_svm, acc_L_rf)
+#%% Evaluation of model accuracies:
+plot.accComparison(acc_1_G_svm, acc_1_G_rf, target="G", hours=1)
+plot.accComparison(acc_1_L_svm, acc_1_L_rf, target="L", hours=1)
+
+plot.accComparison(acc_3_G_svm, acc_3_G_rf, target="G", hours=3)
+plot.accComparison(acc_3_L_svm, acc_3_L_rf, target="L", hours=3)
 
 
 # Evaluation of unit commitment feasibility:
@@ -137,6 +191,19 @@ plot.accComparison(acc_L_svm, acc_L_rf)
     and see if it is feasible maybe. """
 
 # Maybe plot potential relation between cost of gen and accuracy of prediction
+
+#%% Confusion matrices
+plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G_svm.values())).flatten(), title="Confusion Matrix (generator, 1 hour, SVM)")
+plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G_rf.values())).flatten(), title="Confusion Matrix (generator, 1 hour, RF)")
+
+plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L_svm.values())).flatten(), title="Confusion Matrix (line, 1 hour, SVM)")
+plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L_rf.values())).flatten(), title="Confusion Matrix (line, 1 hour, RF)")
+
+plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G_svm.values())).flatten(), title="Confusion Matrix (generator, 3 hour, SVM)")
+plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G_rf.values())).flatten(), title="Confusion Matrix (generator, 3 hour, RF)")
+
+plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L_svm.values())).flatten(), title="Confusion Matrix (line, 3 hour, SVM)")
+plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L_rf.values())).flatten(), title="Confusion Matrix (line, 3 hour, RF)")
 
 #%% Step 6
 n_test_days = int(n_samples*0.2)
