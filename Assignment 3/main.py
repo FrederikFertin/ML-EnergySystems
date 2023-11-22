@@ -25,27 +25,30 @@ demand = np.vstack([list(map(float, row[0].split(';'))) for row in demand.values
 
 """ Task: More samples and shuffle the way each day is generated """
 """ Task: Create samples which activates line constraints """
-n_samples = 20
+n_samples = 200
 
-multis = np.linspace(0.5, 1.5, n_samples)
+#multis = np.linspace(0.5, 1.5, n_samples)
+#demands = [demand*multi for multi in multis]
 
-demands = [demand*multi for multi in multis]
-
-# = sg.generate_samples(multipliers=multis)
+demands = sg.generate_samples(n_samples)
 
 #%% Step 3: Create data sets 
 X = []
 y_G = []
 y_L = []
 
-for i, sample in enumerate(demands):
-    print("Sample ", i)
-    X_sample, y_G_sample, y_L_sample, _, _ = uc.uc(sample, log=False)
+scaler = 0.43891606067023836
+
+for i, sample in enumerate(demands.items()):
+    if i < n_samples:
+        continue
+    print("Sample scaling:", sample[0])
+    X_sample, y_G_sample, y_L_sample, _, _ = uc.uc(sample[1], log=True)
     X.append(X_sample)
     y_G.append(y_G_sample)
     y_L.append(y_L_sample)
 
-X_model = np.array(X).reshape(24*n_samples,91)
+X_model = np.array(X).reshape(24*len(X),91)
 y_G_model = np.array(y_G).reshape(54,24*n_samples)
 y_L_model = np.array(y_L).reshape(186,24*n_samples)
 
@@ -58,15 +61,18 @@ plt.legend()
 plt.show()
 
 #%% Save sample training and test data for future quick runs/reruns
-X_file = cwd + "/generated_samples/X_model.csv"
-y_G_file = cwd + "/generated_samples/y_G_model.csv"
-y_L_file = cwd + "/generated_samples/y_L_model.csv"
+X_file = cwd + "/generated_samples/X.csv"
+y_G_file = cwd + "/generated_samples/y_G.csv"
+y_L_file = cwd + "/generated_samples/y_L.csv"
 
 pd.DataFrame(X_model).to_csv(X_file)
 pd.DataFrame(y_G_model).to_csv(y_G_file)
 pd.DataFrame(y_L_model).to_csv(y_L_file)
 
 #%% Load sample training and test data
+X_file = cwd + "/generated_samples/X_model.csv"
+y_G_file = cwd + "/generated_samples/y_G_model.csv"
+y_L_file = cwd + "/generated_samples/y_L_model.csv"
 X_model = np.asarray(pd.read_csv(X_file,index_col=0))
 y_G_model = np.asarray(pd.read_csv(y_G_file,index_col=0))
 y_L_model = np.asarray(pd.read_csv(y_L_file,index_col=0))
@@ -140,7 +146,7 @@ plot.accComparison(acc_L_svm, acc_L_rf)
 
 #%% Step 6
 n_test_days = int(n_samples*0.2)
-test_day = 0
+test_day = 1
 test_day = max(min([test_day, n_test_days-1]),0)
 
 demand_test = X_test[24*test_day:24*(test_day+1),91:2*91]
@@ -152,18 +158,18 @@ print("Time to solve without any initialization:    ", t_no_init)
     with predicted 'b'-variables. """
 pred_G_test = np.asarray([values[24*test_day:24*(test_day+1)] for values in y_pred_G_rf.values()])
 
-_, _, _, opt_g, t_with_init = uc.uc(demand_test, b_pred = pred_G_test)
+_, _, _, opt_g, t_with_init = uc.uc(demand_test, b_pred = pred_G_test, log=False)
 print("Time to solve with generator initialization: ", t_with_init)
 
 """ Task: Evaluation of runtime of unit commitment problem when trimming
     problem by removing predicted inactive line constraints. """
 pred_L_test = np.asarray([values[24*test_day:24*(test_day+1)] for values in y_pred_L_rf.values()]).T
 
-_, _, _, opt_l, t_trim = uc.uc(demand_test, active_lines = pred_L_test)
+_, _, _, opt_l, t_trim = uc.uc(demand_test, active_lines = pred_L_test, log=False)
 print("Time to solve with constraint trimming:      ", t_trim)
 
 # All predictions utilised:
-_, _, _, opt_all, t_all = uc.uc(demand_test, b_pred = pred_G_test, active_lines = pred_L_test)
+_, _, _, opt_all, t_all = uc.uc(demand_test, b_pred = pred_G_test, active_lines = pred_L_test, log=False)
 print("Time to solve with both model alterations:   ", t_all)
 
 print()
@@ -175,9 +181,9 @@ if (opt_real-opt_l)/opt_real > 0.0001:
 #%% Step 7 - plotting of PCA
 
 
-plot.pca_plot(X_train, X_test, y_pred_G_rf, gen='G:37', pc = [1,2])
+plot.pca_plot(X_train, X_test, y_pred_G_rf, gen='G:31', pc = [2,3])
 
-plot.pca_plot(X_train, X_test, y_pred_G_svm, gen='G:37', pc = [1,2])
+#plot.pca_plot(X_train, X_test, y_pred_G_svm, gen='G:37', pc = [1,2])
 
 
 

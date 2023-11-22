@@ -34,6 +34,8 @@ def uc(demand, b_pred = None, active_lines = None, log = True):
     
     env = gp.Env(empty=True)
     env.setParam("OutputFlag", log)
+    env.setParam("TimeLimit", 500.0)
+    env.setParam("MIPGap", 1e-3)
     env.start()
     
     # Initialize model
@@ -142,7 +144,7 @@ def uc(demand, b_pred = None, active_lines = None, log = True):
         y = np.empty(0)
         congested_lines = np.empty(0)
         
-    elif model.status == GRB.OPTIMAL:
+    elif model.SolCount > 0:
         # Save active constraints
         congested_lines = np.zeros((n_t, n_line))
         if active_lines is None:
