@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Nov 19 15:04:11 2023
-
-@author: Frede
-"""
 
 import unit_commitment as uc
 import sample_gen as sg
@@ -146,8 +140,28 @@ def classifiers(X_train, y_train, X_test, y_test, clfs=[svm.SVC()], target="G"):
     
     return accuracies, classifiers, predictions
 
+#%% Tuning regularization hyperparameter for the two models 
+def tuneRegu(model_type="linear", C_list=np.linspace(0.1,1,10)):
+    accs = []
+    for C in C_list:
+        if model_type == "linear":
+            clfs = [svm.LinearSVC(dual="auto", C=C)]
+        elif model_type == "non-linear":
+            clfs = [svm.SVC(C=C)]
+        acc,_,_ = classifiers(X_1_train, y_1_G_train, X_1_val, y_1_G_val, clfs, target="G")
+        accs.append(np.mean(list(acc[0].values()))) 
+    
+    best_ix = np.argmax(accs)
+    best_C = C_list[best_ix]
+    
+    return accs, best_C
+
+accs_lin, C_lin = tuneRegu(model_type="linear", C_list=np.linspace(1,10,10))
+accs_non, C_non = tuneRegu(model_type="non-linear", C_list=np.linspace(10,100,10))
+
+#%% Comparing performance of classifiers 
 # Classifiers to compare 
-clfs = [svm.LinearSVC(), svm.SVC(), RandomForestClassifier()]
+clfs = [svm.LinearSVC(dual="auto"), svm.SVC(), RandomForestClassifier()]
 # clfs = [svm.NuSVC(gamma="auto"), RandomForestClassifier()]
 
 ### Predict generator status ###
