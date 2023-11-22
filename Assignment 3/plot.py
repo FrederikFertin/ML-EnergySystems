@@ -4,19 +4,20 @@ from sklearn.metrics import confusion_matrix
 import seaborn as sns
 from sklearn.decomposition import PCA
 
-def accComparison(svm_accuracies, rf_accuracies, target="G", hours=1):
-    mean_svm = np.mean(list(svm_accuracies.values()))
-    mean_rf = np.mean(list(rf_accuracies.values()))
-    colors = ['blue','green']
+def accComparison(accuracies, target="G", hours=1, models=["","",""]):
+    colors = ['blue','green', 'red']
     
-    x = np.arange(1,len(rf_accuracies.values())+1)
     # x1 = x-0.2
     # x2 = x+0.2
-    
-    plt.scatter(x, rf_accuracies.values(), label="RF",color=colors[0])
-    plt.axhline(mean_rf,label="Mean RF",color=colors[0], alpha=0.5, linestyle = "--")
-    plt.scatter(x, svm_accuracies.values(), label="SVM",color=colors[1])
-    plt.axhline(mean_svm,label="Mean SVM",color=colors[1], alpha=0.5, linestyle = "--")
+    i = 0
+    for acc in accuracies:
+        mean = np.mean(list(acc.values()))
+        x = np.arange(1,len(acc.values())+1)
+        plt.scatter(x, acc.values(), label=models[i], color=colors[i])
+        plt.axhline(mean,label="Mean "+models[i],color=colors[i], alpha=0.5, linestyle = "--")
+        i += 1
+    # plt.scatter(x, svm_accuracies.values(), label="SVM",color=colors[1])
+    # plt.axhline(mean_svm,label="Mean SVM",color=colors[1], alpha=0.5, linestyle = "--")
     if target == "G":
         plt.xlabel("Generator")
         plt.title("Binary classifier accuracies for each generator (hours=" + str(hours) + ")")

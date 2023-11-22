@@ -147,30 +147,20 @@ def classifiers(X_train, y_train, X_test, y_test, clfs=[svm.SVC()], target="G"):
     return accuracies, classifiers, predictions
 
 # Classifiers to compare 
-clfs = [svm.SVC(), RandomForestClassifier()]
-clfs = [svm.LinearSVC(), RandomForestClassifier()]
+clfs = [svm.LinearSVC(), svm.SVC(), RandomForestClassifier()]
 # clfs = [svm.NuSVC(gamma="auto"), RandomForestClassifier()]
-
 
 ### Predict generator status ###
 acc_1_G, clf_1_G, y_1_pred_G = classifiers(X_1_train, y_1_G_train, X_1_val, y_1_G_val, clfs, target="G")
-acc_1_G_svm, acc_1_G_rf = acc_1_G[0], acc_1_G[1]
-y_1_pred_G_svm, y_1_pred_G_rf = y_1_pred_G[0], y_1_pred_G[1]
 
 ### Step 4 - Predict active constraints ###
 acc_1_L, clf_1_L, y_1_pred_L = classifiers(X_1_train, y_1_L_train, X_1_val, y_1_L_val, clfs, target="L")
-acc_1_L_svm, acc_1_L_rf = acc_1_L[0], acc_1_L[1]
-y_1_pred_L_svm, y_1_pred_L_rf = y_1_pred_L[0], y_1_pred_L[1]
 
 ### Predict generator status ###
 acc_3_G, clf_3_G, y_3_pred_G = classifiers(X_3_train, y_3_G_train, X_3_val, y_3_G_val, clfs, target="G")
-acc_3_G_svm, acc_3_G_rf = acc_3_G[0], acc_3_G[1]
-y_3_pred_G_svm, y_3_pred_G_rf = y_3_pred_G[0], y_3_pred_G[1]
 
 ### Step 4 - Predict active constraints ###
 acc_3_L, clf_3_L, y_3_pred_L = classifiers(X_3_train, y_3_L_train, X_3_val, y_3_L_val, clfs, target="L")
-acc_3_L_svm, acc_3_L_rf = acc_3_L[0], acc_3_L[1]
-y_3_pred_L_svm, y_3_pred_L_rf = y_3_pred_L[0], y_3_pred_L[1]
 
 """ Task: Other classifiers? SVM always predicts 0 currently,
     so something definitely needs to change - or is that the conclusion for
@@ -178,11 +168,11 @@ y_3_pred_L_svm, y_3_pred_L_rf = y_3_pred_L[0], y_3_pred_L[1]
 
 #%% Step 5 - evaluation
 #%% Evaluation of model accuracies:
-plot.accComparison(acc_1_G_svm, acc_1_G_rf, target="G", hours=1)
-plot.accComparison(acc_1_L_svm, acc_1_L_rf, target="L", hours=1)
+plot.accComparison(acc_1_G, target="G", hours=1, models=["Lin SVM", "Non-lin SVM", "RF"])
+plot.accComparison(acc_1_L, target="L", hours=1, models=["Lin SVM", "Non-lin SVM", "RF"])
 
-plot.accComparison(acc_3_G_svm, acc_3_G_rf, target="G", hours=3)
-plot.accComparison(acc_3_L_svm, acc_3_L_rf, target="L", hours=3)
+plot.accComparison(acc_3_G, target="G", hours=3, models=["Lin SVM", "Non-lin SVM", "RF"])
+plot.accComparison(acc_3_L, target="L", hours=3, models=["Lin SVM", "Non-lin SVM", "RF"])
 
 
 # Evaluation of unit commitment feasibility:
@@ -193,17 +183,21 @@ plot.accComparison(acc_3_L_svm, acc_3_L_rf, target="L", hours=3)
 # Maybe plot potential relation between cost of gen and accuracy of prediction
 
 #%% Confusion matrices
-plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G_svm.values())).flatten(), title="Confusion Matrix (generator, 1 hour, SVM)")
-plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G_rf.values())).flatten(), title="Confusion Matrix (generator, 1 hour, RF)")
+plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G[0].values())).flatten(), title="Confusion Matrix (generator, 1 hour, Lin SVM)")
+plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G[1].values())).flatten(), title="Confusion Matrix (generator, 1 hour, Non-lin SVM)")
+plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G[2].values())).flatten(), title="Confusion Matrix (generator, 1 hour, RF)")
 
-plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L_svm.values())).flatten(), title="Confusion Matrix (line, 1 hour, SVM)")
-plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L_rf.values())).flatten(), title="Confusion Matrix (line, 1 hour, RF)")
+plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L[0].values())).flatten(), title="Confusion Matrix (line, 1 hour, Lin SVM)")
+plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L[1].values())).flatten(), title="Confusion Matrix (line, 1 hour, Non-lin SVM)")
+plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L[2].values())).flatten(), title="Confusion Matrix (line, 1 hour, RF)")
 
-plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G_svm.values())).flatten(), title="Confusion Matrix (generator, 3 hour, SVM)")
-plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G_rf.values())).flatten(), title="Confusion Matrix (generator, 3 hour, RF)")
+plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G[0].values())).flatten(), title="Confusion Matrix (generator, 3 hour, Lin SVM)")
+plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G[1].values())).flatten(), title="Confusion Matrix (generator, 3 hour, Non-lin SVM)")
+plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G[2].values())).flatten(), title="Confusion Matrix (generator, 3 hour, RF)")
 
-plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L_svm.values())).flatten(), title="Confusion Matrix (line, 3 hour, SVM)")
-plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L_rf.values())).flatten(), title="Confusion Matrix (line, 3 hour, RF)")
+plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L[0].values())).flatten(), title="Confusion Matrix (line, 3 hour, Lin SVM)")
+plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L[1].values())).flatten(), title="Confusion Matrix (line, 3 hour, Non-lin SVM)")
+plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L[2].values())).flatten(), title="Confusion Matrix (line, 3 hour, RF)")
 
 #%% Step 6
 n_test_days = int(n_samples*0.2)
