@@ -228,16 +228,16 @@ clfs = [svm.LinearSVC(dual="auto", C=C_lin), svm.SVC(C=C_non), RandomForestClass
 # clfs = [svm.NuSVC(gamma="auto"), RandomForestClassifier()]
 
 ### Predict generator status ###
-acc_1_G, clf_1_G, y_1_pred_G = classifiers(X_1_train, y_G_train, X_1_val, y_G_val, clfs, target="G")
+acc_1_G, _, clf_1_G, y_1_pred_G = classifiers(X_1_train, y_G_train, X_1_val, y_G_val, clfs, target="G")
 
 ### Step 4 - Predict active constraints ###
-acc_1_L, clf_1_L, y_1_pred_L = classifiers(X_1_train, y_L_train, X_1_val, y_L_val, clfs, target="L")
+acc_1_L, _, clf_1_L, y_1_pred_L = classifiers(X_1_train, y_L_train, X_1_val, y_L_val, clfs, target="L")
 
 ### Predict generator status ###
-acc_3_G, clf_3_G, y_3_pred_G = classifiers(X_3_train, y_G_train, X_3_val, y_G_val, clfs, target="G")
+acc_3_G, _, clf_3_G, y_3_pred_G = classifiers(X_3_train, y_G_train, X_3_val, y_G_val, clfs, target="G")
 
 ### Step 4 - Predict active constraints ###
-acc_3_L, clf_3_L, y_3_pred_L = classifiers(X_3_train, y_L_train, X_3_val, y_L_val, clfs, target="L")
+acc_3_L, _, clf_3_L, y_3_pred_L = classifiers(X_3_train, y_L_train, X_3_val, y_L_val, clfs, target="L")
 
 """ Task: Other classifiers? SVM always predicts 0 currently,
     so something definitely needs to change - or is that the conclusion for
