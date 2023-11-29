@@ -284,6 +284,7 @@ plot.cf_matrix(y_L_val.flatten(), np.asarray(list(y_3_pred_L[2].values())).flatt
 
 
 #%% Best model for each prediction task
+C_lin = 1e-4
 best_model_G = svm.LinearSVC(dual="auto", C=C_lin)
 acc_G, _, _, y_pred_test_G = classifiers(X_3_train_full, y_G_train_full, X_3_test, y_G_test, [best_model_G], target="G")
 
@@ -296,7 +297,10 @@ n_test_days = len(test_slice_days)
 
 #test_day = 0
 #test_day = max(min([test_day, n_test_days-1]),0)
-
+non_opts = 0
+T1 = []
+T2 = []
+T3 = []
 for test_day in range(n_test_days):
     hours = test_slice[test_day*24:(test_day+1)*24]
     demand_test = X_1_test[test_day*24:(test_day+1)*24]
@@ -312,27 +316,37 @@ for test_day in range(n_test_days):
     
     _, _, _, opt_g, t_with_init = uc.uc(demand_test, b_pred = pred_G_test, log=False)
     print("Time to solve with generator initialization: ", t_with_init)
-    
+    T1.append(t_no_init-t_with_init)
     """ Task: Evaluation of runtime of unit commitment problem when trimming
         problem by removing predicted inactive line constraints. """    
     _, _, _, opt_l, t_trim = uc.uc(demand_test, active_lines = pred_L_test, log=False)
     print("Time to solve with constraint trimming:      ", t_trim)
-    
+    T2.append(t_no_init-t_trim)
     # All predictions utilised:
     _, _, _, opt_all, t_all = uc.uc(demand_test, b_pred = pred_G_test, active_lines = pred_L_test, log=False)
     print("Time to solve with both model alterations:   ", t_all)
+    T3.append(t_no_init-t_all)
     
     print()
     print("Actual optimum:                        ", opt_real)
     print("Optimum with trimmed constraints:      ", opt_l)
-    if (opt_real-opt_l)/opt_real > 0.0001:
+    if (opt_real-opt_l)/opt_real > 0.001:
         print("Not same solution")
+        non_opts += 1
+
+print("Average time saved with gen inits: ", np.median(T1))
+print("Average time saved with constraint trimming: ", np.median(T2))
+print("Average time saved with both implemented: ", np.median(T3))
+print("No. of days where the uc was sub-optimal/infeasible: ", non_opts)
 
 #%% Step 7 - plotting of PCA
-
-plot.pca_plot(X_3_train_full, X_3_test, y_pred_test_G, gen='G:54', pc = [1,2])
-
+from sklearn.decomposition import PCA
+plot.pca_plot(X_3_train_full, X_3_test, y_pred_test_G[0], gen='G:53', pc = [1,2])
+plot.pca_plot(X_3_train_full, X_3_test, {'G:53':y_G_test[0]}, gen='G:53', pc = [1,2])
+#plot.pca_plot(X_3_train_full, X_3_train_full, y_pred_G_G[0], gen='G:31', pc = [1,2])
+plot.pca_plot(X_3_train_full, X_3_train_full, {'G:31':y_G_train_full[0]}, gen='G:31', pc = [1,2])
 #plot.pca_plot(X_train, X_test, y_pred_G_svm, gen='G:37', pc = [1,2])
+
 
 
 
