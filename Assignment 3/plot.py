@@ -27,7 +27,8 @@ def accComparison(accuracies, target="G", hours=1, models=["","",""]):
     else: 
         raise KeyError("Only 'G' and 'L' are accepted for arg. 'target'")
     plt.grid(True)
-    plt.xticks(x,x)
+    ticks = np.arange(3,len(x),3)
+    plt.xticks(ticks, ticks)
     plt.ylabel("Accuracy [-]")
     plt.legend()
     plt.show()
@@ -36,6 +37,7 @@ def accComparison(accuracies, target="G", hours=1, models=["","",""]):
     # plt.show()
 
 def cf_matrix(y_true, y_pred, title=""):
+    
     cf_M = confusion_matrix(y_true, y_pred)
     
     group_names = ['True Neg','False Pos','False Neg','True Pos']
@@ -46,8 +48,10 @@ def cf_matrix(y_true, y_pred, title=""):
     labels = [f"{v1}\n{v2}\n{v3}" for v1, v2, v3 in
               zip(group_names,group_counts,group_percentages)]
     labels = np.asarray(labels).reshape(2,2)
-    sns.heatmap(cf_M, annot=labels, fmt='', cmap='Blues')
-    plt.title(title)
+    sns.heatmap(cf_M, annot=labels, fmt='', cmap='Blues', annot_kws={"size": 20})
+    plt.title(title, fontsize=20)
+    plt.xlabel("Predicted label", fontsize=15)
+    plt.ylabel("True label", fontsize=15)
     plt.show()
 
 def pca_plot(X_train, X_test, y_pred, gen = 'G:31', pc = [1,2]):

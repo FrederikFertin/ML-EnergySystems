@@ -67,8 +67,8 @@ X_file = cwd + "/generated_samples/X_model.csv"
 y_G_file = cwd + "/generated_samples/y_G_model.csv"
 y_L_file = cwd + "/generated_samples/y_L_model.csv"
 X_model = np.asarray(pd.read_csv(X_file,index_col=0))
-y_G_model = np.asarray(pd.read_csv(y_G_file,index_col=0))
-y_L_model = np.asarray(pd.read_csv(y_L_file,index_col=0))
+y_G_model = np.asarray(pd.read_csv(y_G_file,index_col=0)).astype(int)
+y_L_model = np.asarray(pd.read_csv(y_L_file,index_col=0)).astype(int)
 
 #%% Create altered data set 
 X_1hours = X_model.copy()
@@ -118,7 +118,7 @@ def upsample(X_train, y_train):
 
     return np.append(X_train, X_ones_upsampled, axis=0), np.append(y_train, np.transpose(y_ones_upsampled), axis=1)
 
-X_1_train, y_1_L_train = upsample(X_1_train, y_1_L_train)
+X_1_train_up, y_1_L_train_up = upsample(X_1_train, y_1_L_train)
 
 #%% Step 4: Classification
 
@@ -148,10 +148,10 @@ def tuneRegu(model_type="linear", C_list=np.linspace(0.1,1,10)):
     accs = []
     for C in C_list:
         if model_type == "linear":
-            clfs = [svm.LinearSVC(dual="auto", C=C)]
+            clfs = [svm.LinearSVC(C=C, dual="auto")]
         elif model_type == "non-linear":
             clfs = [svm.SVC(C=C)]
-        acc,_,_ = classifiers(X_1_train, y_1_G_train, X_1_val, y_1_G_val, clfs, target="G")
+        acc,_,_ = classifiers(X_1_train[:24*10], y_1_G_train[:,:24*10], X_1_val[:24*5], y_1_G_val[:,:24*5], clfs, target="G")
         accs.append(np.mean(list(acc[0].values())))
 
     best_ix = np.argmax(accs)
@@ -159,12 +159,12 @@ def tuneRegu(model_type="linear", C_list=np.linspace(0.1,1,10)):
 
     return accs, best_C
 
-accs_lin, C_lin = tuneRegu(model_type="linear", C_list=np.linspace(1,10,10))
-accs_non, C_non = tuneRegu(model_type="non-linear", C_list=np.linspace(10,100,10))
+accs_lin2, C_lin2 = tuneRegu(model_type="linear", C_list=np.linspace(0.0001,1,100))
+accs_non2, C_non2 = tuneRegu(model_type="non-linear", C_list=np.linspace(1,100,100))
 
 #%% Comparing performance of classifiers
 # Classifiers to compare
-clfs = [svm.LinearSVC(dual="auto"), svm.SVC(), RandomForestClassifier()]
+clfs = [svm.LinearSVC(dual="auto", C=C_lin), svm.SVC(C=C_non), RandomForestClassifier()]
 # clfs = [svm.NuSVC(gamma="auto"), RandomForestClassifier()]
 
 ### Predict generator status ###
@@ -200,21 +200,21 @@ plot.accComparison(acc_3_L, target="L", hours=3, models=["Lin SVM", "Non-lin SVM
 # Maybe plot potential relation between cost of gen and accuracy of prediction
 
 #%% Confusion matrices
-plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G[0].values())).flatten(), title="Confusion Matrix (generator, 1 hour, Lin SVM)")
-plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G[1].values())).flatten(), title="Confusion Matrix (generator, 1 hour, Non-lin SVM)")
-plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G[2].values())).flatten(), title="Confusion Matrix (generator, 1 hour, RF)")
+plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G[0].values())).flatten(), title="(generator, 1 hour, Lin SVM)")
+plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G[1].values())).flatten(), title="(generator, 1 hour, Non-lin SVM)")
+plot.cf_matrix(y_1_G_val.flatten(), np.asarray(list(y_1_pred_G[2].values())).flatten(), title="(generator, 1 hour, RF)")
 
-plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L[0].values())).flatten(), title="Confusion Matrix (line, 1 hour, Lin SVM)")
-plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L[1].values())).flatten(), title="Confusion Matrix (line, 1 hour, Non-lin SVM)")
-plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L[2].values())).flatten(), title="Confusion Matrix (line, 1 hour, RF)")
+plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L[0].values())).flatten(), title="(line, 1 hour, Lin SVM)")
+plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L[1].values())).flatten(), title="(line, 1 hour, Non-lin SVM)")
+plot.cf_matrix(y_1_L_val.flatten(), np.asarray(list(y_1_pred_L[2].values())).flatten(), title="(line, 1 hour, RF)")
 
-plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G[0].values())).flatten(), title="Confusion Matrix (generator, 3 hour, Lin SVM)")
-plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G[1].values())).flatten(), title="Confusion Matrix (generator, 3 hour, Non-lin SVM)")
-plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G[2].values())).flatten(), title="Confusion Matrix (generator, 3 hour, RF)")
+plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G[0].values())).flatten(), title="(generator, 3 hour, Lin SVM)")
+plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G[1].values())).flatten(), title="(generator, 3 hour, Non-lin SVM)")
+plot.cf_matrix(y_3_G_val.flatten(), np.asarray(list(y_3_pred_G[2].values())).flatten(), title="(generator, 3 hour, RF)")
 
-plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L[0].values())).flatten(), title="Confusion Matrix (line, 3 hour, Lin SVM)")
-plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L[1].values())).flatten(), title="Confusion Matrix (line, 3 hour, Non-lin SVM)")
-plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L[2].values())).flatten(), title="Confusion Matrix (line, 3 hour, RF)")
+plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L[0].values())).flatten(), title="(line, 3 hour, Lin SVM)")
+plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L[1].values())).flatten(), title="(line, 3 hour, Non-lin SVM)")
+plot.cf_matrix(y_3_L_val.flatten(), np.asarray(list(y_3_pred_L[2].values())).flatten(), title="(line, 3 hour, RF)")
 
 #%% Step 6
 n_test_days = int(n_samples*0.2)
