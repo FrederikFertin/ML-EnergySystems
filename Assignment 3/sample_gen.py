@@ -30,8 +30,7 @@ def generate_samples(n_samples):
     return samples_dict
 
 
-def pick_samples(df, seed=random.random()):
-    random.seed(seed)
+def pick_samples(df):
     sample = np.empty([24, 91])
     for t in range(24):
         sample[t, :] = df.iloc[random.randint(0, len(df))]
