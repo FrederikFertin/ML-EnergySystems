@@ -45,6 +45,23 @@ X_model = np.array(X).reshape(24*n_samples,91)
 y_G_model = np.array(y_G).reshape(54,24*n_samples)
 y_L_model = np.array(y_L).reshape(186,24*n_samples)
 
+#%% Save sample training and test data for future quick runs/reruns
+X_file = cwd + "/generated_samples/X.csv"
+y_G_file = cwd + "/generated_samples/y_G.csv"
+y_L_file = cwd + "/generated_samples/y_L.csv"
+
+pd.DataFrame(X_model).to_csv(X_file)
+pd.DataFrame(y_G_model).to_csv(y_G_file)
+pd.DataFrame(y_L_model).to_csv(y_L_file)
+
+#%% Load sample training and test data
+X_file = cwd + "/generated_samples/X_model.csv"
+y_G_file = cwd + "/generated_samples/y_G_model.csv"
+y_L_file = cwd + "/generated_samples/y_L_model.csv"
+X_model = np.asarray(pd.read_csv(X_file,index_col=0))
+y_G_model = np.asarray(pd.read_csv(y_G_file,index_col=0)).astype(int)
+y_L_model = np.asarray(pd.read_csv(y_L_file,index_col=0)).astype(int)
+
 plt.scatter(np.arange(len(y_G_model))+1,y_G_model.sum(axis=1),label = "Active generator hours",s=10,marker="_")
 plt.title("Number of hours each generator is on")
 plt.ylabel("Hours")
@@ -64,23 +81,6 @@ plt.ylim(-1,6)
 plt.xlim(0,len(y_L_model)+1)
 plt.legend()
 plt.show()
-
-#%% Save sample training and test data for future quick runs/reruns
-X_file = cwd + "/generated_samples/X.csv"
-y_G_file = cwd + "/generated_samples/y_G.csv"
-y_L_file = cwd + "/generated_samples/y_L.csv"
-
-pd.DataFrame(X_model).to_csv(X_file)
-pd.DataFrame(y_G_model).to_csv(y_G_file)
-pd.DataFrame(y_L_model).to_csv(y_L_file)
-
-#%% Load sample training and test data
-X_file = cwd + "/generated_samples/X_model.csv"
-y_G_file = cwd + "/generated_samples/y_G_model.csv"
-y_L_file = cwd + "/generated_samples/y_L_model.csv"
-X_model = np.asarray(pd.read_csv(X_file,index_col=0))
-y_G_model = np.asarray(pd.read_csv(y_G_file,index_col=0)).astype(int)
-y_L_model = np.asarray(pd.read_csv(y_L_file,index_col=0)).astype(int)
 
 #%% Create altered data set 
 X_1hours = X_model.copy()
@@ -122,23 +122,28 @@ test_slice_days = daily_ids[int(0.8*n_days):]
 train_slice = hourly_ids[:int(0.6*n_days)*24]
 val_slice = hourly_ids[int(0.6*n_days)*24:int(0.8*n_days)*24]
 test_slice = hourly_ids[int(0.8*n_days)*24:]
+train_val_slice = hourly_ids[:int(0.8*n_days)*24]
 
 #%% Train-val-test splits:
 X_1_train = X_1hours[train_slice]
 X_1_val = X_1hours[val_slice]
 X_1_test = X_1hours[test_slice]
+X_1_train_full = X_1hours[train_val_slice]
 
 X_3_train = X_3hours[train_slice]
 X_3_val = X_3hours[val_slice]
 X_3_test = X_3hours[test_slice]
+X_3_train_full = X_3hours[train_val_slice]
 
 y_G_train = y_G_model.T[train_slice].T
 y_G_val = y_G_model.T[val_slice].T
 y_G_test = y_G_model.T[test_slice].T
+y_G_train_full = y_G_model.T[train_val_slice].T
 
 y_L_train = y_L_model.T[train_slice].T
 y_L_val = y_L_model.T[val_slice].T
 y_L_test = y_L_model.T[test_slice].T
+y_L_train_full = y_L_model.T[train_val_slice].T
 
 #%% Perform upsampling
 def upsample(X_train, y_train):
@@ -167,6 +172,7 @@ def classifiers(X_train, y_train, X_test, y_test, clfs=[svm.SVC()], target="G"):
             clf = clfs[i]
             if np.sum(y_train[g]) == 0:
                 y_pred = np.zeros(len(X_test))
+                y_pred_train = np.zeros(len(X_train))
                 print("Boink", g)
             else:
                 clf.fit(X_train, y_train[g].astype(int))
@@ -201,7 +207,7 @@ def tuneRegu(model_type="linear", C_list=np.linspace(0.1,1,10)):
     return accs, best_C, accs_train
 
 #%% Validation of optimal regularization parameter
-accs_val_lin, C_lin, accs_train_lin = tuneRegu(model_type="linear", C_list=np.linspace(0.0001,1,100)) #C_list=np.logspace(-5,3,9)
+accs_val_lin, C_lin, accs_train_lin = tuneRegu(model_type="linear", C_list=np.linspace(0.0001,1,3)) #C_list=np.logspace(-5,3,9)
 
 plt.plot(accs_val_lin, label="Validation accuracies")
 plt.plot(accs_train_lin, label="Training accuracies")
@@ -212,11 +218,11 @@ plt.title("Regularization of the linear SVM")
 plt.show()
 
 #%%
-accs_val_non, C_non, accs_train_non = tuneRegu(model_type="non-linear", C_list=np.linspace(1,100,100)) #C_list=np.logspace(-5,3,9)
+accs_val_non, C_non, accs_train_non = tuneRegu(model_type="non-linear", C_list=np.linspace(1,100,3)) #C_list=np.logspace(-5,3,9)
 
 plt.plot(accs_val_non, label="Validation accuracies")
 plt.plot(accs_train_non, label="Training accuracies")
-plt.set_xscale('log')
+plt.xscale('log')
 plt.axvline(np.argmax(accs_val_non),C_non, linestyle="--",label="Optimal regularization")
 plt.legend()
 plt.title("Regularization of the non-linear SVM")
@@ -243,7 +249,7 @@ acc_3_L, _, clf_3_L, y_3_pred_L = classifiers(X_3_train, y_L_train, X_3_val, y_L
     so something definitely needs to change - or is that the conclusion for
     our linear solver? """
 
-#%% Step 5 - evaluation
+
 #%% Evaluation of model accuracies:
 plot.accComparison(acc_1_G, target="G", hours=1, models=["Lin SVM", "Non-lin SVM", "RF"])
 plot.accComparison(acc_1_L, target="L", hours=1, models=["Lin SVM", "Non-lin SVM", "RF"])
@@ -276,47 +282,55 @@ plot.cf_matrix(y_L_val.flatten(), np.asarray(list(y_3_pred_L[0].values())).flatt
 plot.cf_matrix(y_L_val.flatten(), np.asarray(list(y_3_pred_L[1].values())).flatten(), title="(line, 3 hour, Non-lin SVM)")
 plot.cf_matrix(y_L_val.flatten(), np.asarray(list(y_3_pred_L[2].values())).flatten(), title="(line, 3 hour, RF)")
 
+
+#%% Best model for each prediction task
+best_model_G = svm.LinearSVC(dual="auto", C=C_lin)
+acc_G, _, _, y_pred_test_G = classifiers(X_3_train_full, y_G_train_full, X_3_test, y_G_test, [best_model_G], target="G")
+
+best_model_L = svm.LinearSVC(dual="auto", C=C_lin)
+acc_L, _, _, y_pred_test_L = classifiers(X_3_train_full, y_L_train_full, X_3_test, y_L_test, [best_model_L], target="L")
+
+
 #%% Step 6
 n_test_days = len(test_slice_days)
-test_day = 0
-test_day = max(min([test_day, n_test_days-1]),0)
 
-hours = test_slice[test_day*24:(test_day+1)*24]
-demand_test = X_1_test[test_day*24:(test_day+1)*24]
+#test_day = 0
+#test_day = max(min([test_day, n_test_days-1]),0)
 
-pred_G_test = np.asarray([values[24*test_day:24*(test_day+1)] for values in y_pred_G_test.values()])
-
-_, _, _, opt_real, t_no_init = uc.uc(demand_test, log=False)
-print("Time to solve without any initialization:    ", t_no_init)
-
-""" Task: Evaluation of runtime of unit commitment problem when initialing
-    with predicted 'b'-variables. """
-pred_G_test = np.asarray([values[24*test_day:24*(test_day+1)] for values in y_pred_G_rf.values()])
-
-_, _, _, opt_g, t_with_init = uc.uc(demand_test, b_pred = pred_G_test, log=False)
-print("Time to solve with generator initialization: ", t_with_init)
-
-""" Task: Evaluation of runtime of unit commitment problem when trimming
-    problem by removing predicted inactive line constraints. """
-pred_L_test = np.asarray([values[24*test_day:24*(test_day+1)] for values in y_pred_L_rf.values()]).T
-
-_, _, _, opt_l, t_trim = uc.uc(demand_test, active_lines = pred_L_test, log=False)
-print("Time to solve with constraint trimming:      ", t_trim)
-
-# All predictions utilised:
-_, _, _, opt_all, t_all = uc.uc(demand_test, b_pred = pred_G_test, active_lines = pred_L_test, log=False)
-print("Time to solve with both model alterations:   ", t_all)
-
-print()
-print("Actual optimum:                        ", opt_real)
-print("Optimum with trimmed constraints:      ", opt_l)
-if (opt_real-opt_l)/opt_real > 0.0001:
-    print("Not same solution")
+for test_day in range(n_test_days):
+    hours = test_slice[test_day*24:(test_day+1)*24]
+    demand_test = X_1_test[test_day*24:(test_day+1)*24]
+    
+    pred_G_test = np.asarray([values[24*test_day:24*(test_day+1)] for values in y_pred_test_G[0].values()])
+    pred_L_test = np.asarray([values[24*test_day:24*(test_day+1)] for values in y_pred_test_L[0].values()]).T
+    
+    _, _, _, opt_real, t_no_init = uc.uc(demand_test, log=False)
+    print("Time to solve without any initialization:    ", t_no_init)
+    
+    """ Task: Evaluation of runtime of unit commitment problem when initialing
+        with predicted 'b'-variables. """
+    
+    _, _, _, opt_g, t_with_init = uc.uc(demand_test, b_pred = pred_G_test, log=False)
+    print("Time to solve with generator initialization: ", t_with_init)
+    
+    """ Task: Evaluation of runtime of unit commitment problem when trimming
+        problem by removing predicted inactive line constraints. """    
+    _, _, _, opt_l, t_trim = uc.uc(demand_test, active_lines = pred_L_test, log=False)
+    print("Time to solve with constraint trimming:      ", t_trim)
+    
+    # All predictions utilised:
+    _, _, _, opt_all, t_all = uc.uc(demand_test, b_pred = pred_G_test, active_lines = pred_L_test, log=False)
+    print("Time to solve with both model alterations:   ", t_all)
+    
+    print()
+    print("Actual optimum:                        ", opt_real)
+    print("Optimum with trimmed constraints:      ", opt_l)
+    if (opt_real-opt_l)/opt_real > 0.0001:
+        print("Not same solution")
 
 #%% Step 7 - plotting of PCA
 
-
-plot.pca_plot(X_train, X_test, y_pred_G_rf, gen='G:31', pc = [2,3])
+plot.pca_plot(X_3_train_full, X_3_test, y_pred_test_G, gen='G:54', pc = [1,2])
 
 #plot.pca_plot(X_train, X_test, y_pred_G_svm, gen='G:37', pc = [1,2])
 
