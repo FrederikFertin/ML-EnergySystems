@@ -191,7 +191,7 @@ def tuneRegu(model_type="linear", C_list=np.linspace(0.1,1,10)):
             clfs = [svm.LinearSVC(C=C, dual="auto")]
         elif model_type == "non-linear":
             clfs = [svm.SVC(C=C)]
-        acc, acc_train, _, _ = classifiers(X_1_train[:24*10], y_1_G_train[:,:24*10], X_1_val[:24*5], y_1_G_val[:,:24*5], clfs, target="G")
+        acc, acc_train, _, _ = classifiers(X_1_train[:24*10], y_G_train[:,:24*10], X_1_val[:24*5], y_G_val[:,:24*5], clfs, target="G")
         accs.append(np.mean(list(acc[0].values())))
         accs_train.append(np.mean(list(acc_train[0].values())))
 
