@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 from sklearn.decomposition import PCA
+from sklearn import svm
 
 def accComparison(accuracies, target="G", hours=1, models=["","",""]):
     colors = ['blue','green', 'red']
@@ -52,6 +53,41 @@ def cf_matrix(y_true, y_pred, title=""):
     plt.title(title, fontsize=20)
     plt.xlabel("Predicted label", fontsize=15)
     plt.ylabel("True label", fontsize=15)
+    plt.show()
+    
+def make_meshgrid(x, y, h=1):
+    x_min, x_max = x.min() - 1, x.max() + 1
+    y_min, y_max = y.min() - 1, y.max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+    return xx, yy
+
+def plot_contours(ax, clf, xx, yy, **params):
+    Z = clf.predict(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+    out = ax.contourf(xx, yy, Z, **params)
+    return out
+
+def pca_contour_plot(C, X_train, X_test, y_test, title, linear = True):
+    
+    pca = PCA(n_components=2)
+    pca.fit(X_train)
+    reduced_X = pca.transform(X_test)
+    fig, ax = plt.subplots()
+    if linear:
+        PCA_model = svm.LinearSVC(dual="auto", C=C)
+    else: 
+        PCA_model = svm.SVC(C=C)
+    clf = PCA_model.fit(reduced_X,y_test)
+    
+    # Set-up grid for plotting.
+    X0, X1 = reduced_X[:, 0], reduced_X[:, 1]
+    xx, yy = make_meshgrid(X0, X1)
+    plot_contours(ax, clf, xx, yy, cmap=plt.cm.coolwarm, alpha=0.8)
+
+    ax.scatter(X0, X1, c=y_test, cmap=plt.cm.coolwarm, s=20, edgecolors='k')
+    ax.set_ylabel('PC2')
+    ax.set_xlabel('PC1')
+    plt.title(title)
     plt.show()
 
 def pca_plot(X_train, X_test, y_pred, gen = 'G:31', pc = [1,2]):

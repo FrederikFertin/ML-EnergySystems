@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import os
 from sklearn import svm
+from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.utils import resample
@@ -340,16 +341,34 @@ print("Average time saved with both implemented: ", np.median(T3))
 print("No. of days where the uc was sub-optimal/infeasible: ", non_opts)
 
 #%% Step 7 - plotting of PCA
-from sklearn.decomposition import PCA
-plot.pca_plot(X_3_train_full, X_3_test, y_pred_test_G[0], gen='G:53', pc = [1,2])
-plot.pca_plot(X_3_train_full, X_3_test, {'G:53':y_G_test[0]}, gen='G:53', pc = [1,2])
+C_non = 10
+plot.pca_contour_plot(C_non, X_1_train, X_1_test, y_G_test[53], title='non-linear SVM on PCA; not-regularized', linear=False)
+C_non2 = 0.1
+plot.pca_contour_plot(C_non2, X_1_train, X_1_test, y_G_test[53],title='non-linear SVM on PCA; regularized', linear=False)
+C_lin=1e-4
+plot.pca_contour_plot(C_lin, X_1_train, X_1_test, y_G_test[53], title='linear SVM on PCA', linear=True)
+
+#plot.pca_plot(X_3_train_full, X_3_test, y_pred_test_G[0], gen='G:53', pc = [1,2])
+#plot.pca_plot(X_3_train_full, X_3_test, {'G:53':y_G_test[0]}, gen='G:53', pc = [1,2])
 #plot.pca_plot(X_3_train_full, X_3_train_full, y_pred_G_G[0], gen='G:31', pc = [1,2])
-plot.pca_plot(X_3_train_full, X_3_train_full, {'G:31':y_G_train_full[0]}, gen='G:31', pc = [1,2])
+#plot.pca_plot(X_3_train_full, X_3_train_full, {'G:31':y_G_train_full[0]}, gen='G:31', pc = [1,2])
 #plot.pca_plot(X_train, X_test, y_pred_G_svm, gen='G:37', pc = [1,2])
 
+#%% PCA confusion matrices
+pca = PCA(n_components=2)
+pca.fit(X_1_train)
+reduced_X_train  = pca.transform(X_1_train)
+reduced_X = pca.transform(X_1_test)
+PCA_clfs = [svm.LinearSVC(dual="auto", C=C_lin), svm.SVC(C=C_non), svm.SVC(C=C_non2)]
+y_pred_PCA = []
+for i in range(len(PCA_clfs)):
+    clf = PCA_clfs[i]
+    clf.fit(reduced_X_train, y_G_train[53])
+    y_pred_PCA.append(clf.predict(reduced_X))
 
-
-
+plot.cf_matrix(y_G_test[53].flatten(), np.asarray(list(y_pred_PCA[0])).flatten(), title="(gen 54, Lin SVM, PCA)")
+plot.cf_matrix(y_G_test[53].flatten(), np.asarray(list(y_pred_PCA[1])).flatten(), title="(gen 54, non-Lin SVM, PCA)")
+plot.cf_matrix(y_G_test[53].flatten(), np.asarray(list(y_pred_PCA[2])).flatten(), title="(gen 54, non-Lin SVM, reg, PCA)")
 
 
 
